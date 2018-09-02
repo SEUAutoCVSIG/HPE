@@ -84,6 +84,20 @@ class StackedHourglass(nn.Module):
         
         # First predicted heatmaps
         self.out1 = nn.Conv2d(256, chan_out, 1)
+        self.out1_ = nn.Conv2d(chan_out, 256+128, 1)
         
-        self.cat2 = nn.Conv2d(chan_out, 256+128, 1)
+        self.cat1 = nn.Conv2d(256+128, 256+128, 1)
         
+        self.hg2 = Hourglass(4, 256+128, 512)
+        
+        self.l3 = nn.Sequential(
+            nn.Conv2d(512, 512, 1),
+            nn.ReLU(inpace=True)
+            )
+        self.l4 = nn.Sequential(
+            nn.Conv2d(512, 512, 1),
+            nn.ReLU(inpace=True)
+            )
+        
+        self.out2 = nn.Conv2d(512, chan_out, 1)
+  
