@@ -4,15 +4,13 @@
 
     Author           : Shaoshu Yang
     Email            : 13558615057@163.com
-    Last edit date   : Aug 28 20:00 2018
+    Last edit date   : Sept 2 23:46 2018
 
 South East University Automation College, 211189 Nanjing China
 '''
 
 from residual import Residual
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 # Definition of hourglass module
 class Hourglass(nn.Module):
@@ -60,8 +58,15 @@ class Hourglass(nn.Module):
 
 class StackedHourglass(nn.Module):
     def __init__(self, chan_out):
+        '''
+            Args:
+                 chan_out  : (int) number of output channels
+        '''
+        super(nn.Module, StackedHourglass).__init__()
+        
         # Initial processing of th image
         self.conv1 = nn.Conv2d(3, 64, 7, stride=2, padding=3)
+        self.bn1 = nn.BatchNorm2d(64)
         self.ReLU1 = nn.ReLU(inpace=True)
         self.r1 = Residual(64, 128)
         self.pool1 = nn.MaxPool2d(2, stride=2)
@@ -75,10 +80,12 @@ class StackedHourglass(nn.Module):
         # Linear layers to produce first set of predictions
         self.l1 = nn.Sequential(
             nn.Conv2d(512, 512, 1),
+            nn.BatchNorm2d(512),
             nn.ReLU(inpace=True)
             )
         self.l2 = nn.Sequential(
             nn.Conv2d(512, 256, 1),
+            nn.BatchNorm2d(256),
             nn.ReLU(inpace=True)
             )
         
@@ -86,18 +93,64 @@ class StackedHourglass(nn.Module):
         self.out1 = nn.Conv2d(256, chan_out, 1)
         self.out1_ = nn.Conv2d(chan_out, 256+128, 1)
         
+        # Concatenate with previous linear features
         self.cat1 = nn.Conv2d(256+128, 256+128, 1)
         
+        # Second hourglass
         self.hg2 = Hourglass(4, 256+128, 512)
         
+        # Linear layers to produce predictions again
         self.l3 = nn.Sequential(
             nn.Conv2d(512, 512, 1),
+            nn.BatchNorm2d(512),
             nn.ReLU(inpace=True)
             )
         self.l4 = nn.Sequential(
             nn.Conv2d(512, 512, 1),
+            nn.BatchNorm2d(512),
             nn.ReLU(inpace=True)
             )
         
+        # Output heatmaps
         self.out2 = nn.Conv2d(512, chan_out, 1)
-  
+    
+    # Override the forward method
+    def forward(self, x):
+        out = []
+        
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.ReLU1(x)
+        x = self.r1(x)
+        x = self.pool1(x)
+        
+        # Forward pass on level1
+        lv1 = self.r4(x)
+        lv1 = self.r5(lv1)
+        lv1 = self.r6(lv1)
+        lv1 = self.hg1(lv1)
+        lv1 = self.l1(lv1)
+        lv1 = self.l2(lv1)
+        out1 = self.out1(lv1)
+        
+        # Append output level1
+        out.append(out1)
+        out1 = self.out1_(out1)
+        
+        # Joint of pool1 & l2
+        lv2 = []
+        lv2.append(x)
+        lv2.append(lv1)
+        
+        # Forward pass on level2
+        lv2 = self.cat1(lv2)
+        lv2 = lv2 + out1
+        lv2 = self.hg2(lv2)
+        lv2 = self.l3(lv2)
+        lv2 = self.l4(lv2)
+        
+        # Append output level2
+        out.append(self.out2(lv2))
+        
+        return out
+        
