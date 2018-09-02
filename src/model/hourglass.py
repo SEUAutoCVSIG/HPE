@@ -13,7 +13,6 @@ from residual import Residual
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchviz import make_dot
 
 # Definition of hourglass module
 class Hourglass(nn.Module):
@@ -56,8 +55,35 @@ class Hourglass(nn.Module):
                 )
 
     # Override of forward method
-    def forward(slef, x):
+    def forward(self, x):
         return self.upper(x) + self.lower(x)
 
 class StackedHourglass(nn.Module):
-    def __init__()
+    def __init__(self, chan_out):
+        # Initial processing of th image
+        self.conv1 = nn.Conv2d(3, 64, 7, stride=2, padding=3)
+        self.ReLU1 = nn.ReLU(inpace=True)
+        self.r1 = Residual(64, 128)
+        self.pool1 = nn.MaxPool2d(2, stride=2)
+        self.r4 = Residual(128, 128)
+        self.r5 = Residual(128, 128)
+        self.r6 = Residual(128, 256)
+        
+        # First hourglass
+        self.hg1 = Hourglass(256, 512, 4)
+        
+        # Linear layers to produce first set of predictions
+        self.l1 = nn.Sequential(
+            nn.Conv2d(512, 512, 1),
+            nn.ReLU(inpace=True)
+            )
+        self.l2 = nn.Sequential(
+            nn.Conv2d(512, 256, 1),
+            nn.ReLU(inpace=True)
+            )
+        
+        # First predicted heatmaps
+        self.out1 = nn.Conv2d(256, chan_out, 1)
+        
+        self.cat2 = nn.Conv2d(chan_out, 256+128, 1)
+        
