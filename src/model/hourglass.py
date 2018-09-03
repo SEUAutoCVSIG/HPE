@@ -9,7 +9,7 @@
 South East University Automation College, 211189 Nanjing China
 '''
 
-from residual import Residual
+from src.model.residual import Residual
 import torch.nn as nn
 
 # Definition of hourglass module
