@@ -15,7 +15,7 @@ import torch.nn.functional as F
 
 # The definition of residual module class in stacked hourglass
 class Residual(nn.Module):
-    def __init__(self, chan_in=64, chan_out=64):
+    def __init__(self, chan_in, chan_out):
         '''
            args:
                 chan_in   : (int) number of input channels
@@ -47,3 +47,6 @@ class Residual(nn.Module):
         residual = self.mainconv(x)
         out = self.skip(x) + residual
         return out
+
+model = Residual(64, 64)
+print(model)
