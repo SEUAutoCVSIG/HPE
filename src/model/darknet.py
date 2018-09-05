@@ -57,6 +57,22 @@ def parse_cfg(cfgfile):
 
     return blocks
 
+# EmptyLayer is registered as the route layer in darknet
+class EmptyLayer(nn.Module):
+    def __init__(self):
+        super(EmptyLayer, self).__init__()
+
+# DetectLayer is registered for the yolo layer in darknet
+class DetectLayer(nn.Module):
+    def __init__(self, anchors):
+        '''
+            Args:
+                 anchors   : (list) the list describing anchors of
+                             yolo v3
+        '''
+        super(DetectLayer, self).__init__()
+        self.anchors = anchors
+
 def create_modules(blocks):
     # Stores the info about the network
     net_info = blocks[0]
@@ -126,9 +142,99 @@ def create_modules(blocks):
                 start = start - i
             if end > 0:
                 end = end - i
-            # pass, unfinished yet
+            route = EmptyLayer()
+            module.add_module("route{0}".format(i), route)
 
+            if end < 0:
+                filters = chan_out[i+start] + chan_out[i+end]
+            else:
+                filters = chan_out[i+start]
         # Append shortcut layer
-        #elif layer["type"] == "shortcut":
+        elif layer["type"] == "shortcut":
+            shortcut = EmptyLayer()
+            module.add_module("shortcut{0}".format(i), shortcut)
+
         # Append yolo layer
-        #elif layer["type"] == "yolo":
+        elif layer["type"] == "yolo":
+            mask = layer["mask"].split(",")
+            mask = [int(a) for a in mask]
+
+            anchors = layer["anchors"].split(",")
+            anchors = [int(a) for a in anchors]
+            anchors = [(anchors[i], anchors[i+1]) for i in range(0,
+                                                   len(anchors), 2)]
+            anchors = [anchors[i] for i in mask]
+
+            detection = DetectLayer(anchors)
+            module.add_module("detection{0}".format(i), detection)
+
+        module_list.append(module)
+        chan_in = filters
+        chan_out.append(filters)
+
+    return net_info, module_list
+
+# darknet structure definition
+class darknet(nn.Module):
+    def __init__(self, cfgfile):
+        '''
+            Args:
+                 cfgfile : (string) directory of *.cfg file
+        '''
+        super(darknet, self).__init__()
+        self.blocks = parse_cfg(cfgfile)
+        self.net_info, self.module_list = create_modules(self.blocks)
+
+    def forward(self, x, CUDA):
+        '''
+            Args:
+                 x       : (tensor) input tensor
+                 CUDA    : (bool) determines whether this device has
+                          access to CUDA and GPU computing
+            return:
+                 The prediction of the network
+        '''
+        # Cache the output of route layers
+        route_output = {}
+
+        for i, module in enumerate(self.blocks[1:]):
+            module_type = module["type"]
+
+            # Convolution or upsample computing
+            if module_type == "convolutional" or module_type == \
+                                                        "upsample":
+                x = self.module_list[i](x)
+
+            # Concatenate from previous outputs
+            elif module_type == "route":
+                layers = module["layers"]
+                layers = [int(a) for a in layers]
+
+                if layers[0] > 0:
+                    layers[0] -= i
+
+                if len(layers) == 1:
+                    x = route_output[i + layers[0]]
+                else:
+                    if layers[1] > 0:
+                        layers[1] -= i
+
+                    x = torch.cat((route_output[i + layers[0]],
+                                   route_output[i + layers[1]]), 1)
+
+            # Add outputs of the previous layer
+            # to the previous layer(-from_)
+            elif module_type == "shortcut":
+                from_ = int(module["form"])
+                x = route_output[i - 1] + route_output[i + from_]
+
+            elif module_type == "yolo":
+                anchors = self.module_list[i](0).anchors
+
+                # Get input dimensions
+                in_dim = int(self.net_info["height"])
+                # Get classes number
+                class_num = int(module["classes"])
+
+
+
