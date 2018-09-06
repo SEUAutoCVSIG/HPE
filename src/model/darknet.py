@@ -19,6 +19,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+from src.utils import pred_transform
 import numpy as np
 
 def parse_cfg(cfgfile):
@@ -117,7 +118,7 @@ def create_modules(blocks):
 
             # Append activation
             if activation == "leaky":
-                activation_ = nn.LeakyReLU(0.1, inpace=True)
+                activation_ = nn.LeakyReLU(0.1, inplace=True)
                 module.add_module("leaky{0}".format(i), activation_)
 
         # Append upsample layer
@@ -128,12 +129,12 @@ def create_modules(blocks):
 
         # Append route layer
         elif layer["type"] == "route":
-            layer["layer"] = layer["layer"].split(',')
+            layer["layers"] = layer["layers"].split(',')
             # Param one of route
-            start = int(layer["layer"][0])
+            start = int(layer["layers"][0])
             # Detect param two
             try:
-                end = int(layer["layer"][1])
+                end = int(layer["layers"][1])
             except:
                 end = 0
 
@@ -197,6 +198,8 @@ class darknet(nn.Module):
         # Cache the output of route layers
         route_output = {}
 
+        # Record if
+        write = 0
         for i, module in enumerate(self.blocks[1:]):
             module_type = module["type"]
 
@@ -229,12 +232,120 @@ class darknet(nn.Module):
                 x = route_output[i - 1] + route_output[i + from_]
 
             elif module_type == "yolo":
-                anchors = self.module_list[i](0).anchors
+                anchors = self.module_list[i][0].anchors
 
                 # Get input dimensions
                 in_dim = int(self.net_info["height"])
                 # Get classes number
                 class_num = int(module["classes"])
+
+                # Add offset and log-spacial transform
+                x = x.data
+                x = pred_transform(x, in_dim, anchors, class_num, CUDA)
+                if not write:
+                    detections = x
+                    write = 1
+                else:
+                    detections = torch.cat((detections, x), 1)
+
+            route_output[i] = x
+
+        return detections
+
+    def load_weight(self, weightfile):
+        '''
+            Args:
+                 weightfile   : (string) directory to the weight file
+        '''
+        file = open(weightfile, 'r')
+
+        # The first 5 values are header information
+        # 1. Major version number
+        # 2. Minor version number
+        # 3. Subversion number
+        # 4. 5. Images seen by the network during training
+        header = np.fromfile(file, dtype=np.int32, count=5)
+        self.header = torch.from_numpy(header)
+        self.seen = self.header[3]
+
+        weight = np.fromfile(file, dtype=np.float32)
+
+        # ptr records the position of the forward mark
+        ptr = 0
+        for i in range(len(self.module_list)):
+            module_type = self.module_list[i+1]["type"]
+
+            # Only convolution layers load weights
+            if module_type == "convolutional":
+                model = self.module_list[i]
+                try:
+                    batch_norm = int(self.blocks[i+1]["batch_normalize"])
+                except:
+                    batch_norm = 0
+
+                conv = model[0]
+
+                if batch_norm:
+                    BN = model[1]
+
+                    # Number of weights in batch normalization layer
+                    bn_bias_num = BN.bias.numel()
+
+                    # Read the weights
+                    bn_bias = torch.from_numpy(weight[ptr:ptr+bn_bias_num])
+                    ptr += bn_bias_num
+
+                    bn_weights = torch.from_numpy(weight[ptr:ptr+bn_bias_num])
+                    ptr += bn_bias_num
+
+                    bn_running_mean = torch.from_numpy(weight[ptr:ptr+
+                                                                  bn_bias_num])
+                    ptr += bn_bias_num
+
+                    bn_running_var = torch.from_numpy(weight[ptr:ptr+
+                                                                  bn_bias_num])
+                    ptr += bn_bias_num
+
+                    # Cast the loaded weight into the dims of model weights
+                    bn_bias = bn_bias.view_as(BN.bias.data)
+                    bn_weights = bn_weights.view_as(BN.weights.data)
+                    bn_running_mean = bn_running_mean.view_as(BN.running_mean)
+                    bn_running_var = bn_running_var.view_as(BN.running_Var)
+
+                    # Load the weights to the model
+                    BN.bias.data.copy_(bn_bias)
+                    BN.weights.data.copy_(bn_weights)
+                    BN.running_mean.copy_(bn_running_mean)
+                    BN.running_var.copy_(bn_running_var)
+
+                # Load weights without batch normalization layer
+                else:
+                    # Get number of weights
+                    bias_num = conv.bias.numel()
+
+                    # Load weights
+                    bias = torch.from_numpy(weight[ptr:ptr+bias_num])
+                    ptr += bias_num
+
+                    # Cast loaded weights to the dims of that in model
+                    bias = bias.view_as(conv.bias.data)
+
+                    # Load the weights to the model
+                    conv.bias.data.copy_(bias)
+
+                # Get the weights number of the convolution kernel
+                conv_weight_num = conv.weight.numel()
+
+                # The same process mentioned above
+                conv_weight = torch.from_numpy(weight[ptr:ptr+conv_weight_num])
+                ptr += conv_weight_num
+
+                conv_weight = conv_weight.view_as(conv.weight.data)
+                conv.weight.data.copy_(conv_weight)
+
+if __name__ == "__main__":
+    model = darknet("C:/PycharmProjects/HPE/cfg/yolov3.cfg")
+    print(model)
 
 
 
