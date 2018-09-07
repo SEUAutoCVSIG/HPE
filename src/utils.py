@@ -4,7 +4,7 @@
 
     Author           : Shaoshu Yang
     Email            : 13558615057@163.com
-    Last edit date   : Sept 6 19:34 2018
+    Last edit date   : Sept 6 23:47 2018
 
 South East University Automation College, 211189 Nanjing China
 
@@ -36,7 +36,7 @@ def pred_transform(prediction, in_dim, anchors, class_num, CUDA=True):
     '''
     batch_size = prediction.size(0)
     stride = in_dim//prediction.size(2)
-    grid_size = in_dim//stride
+    grid_size = prediction.size(2)
     bbox_attr = 5 + class_num
     anchor_num = len(anchors)
 
@@ -64,7 +64,9 @@ def pred_transform(prediction, in_dim, anchors, class_num, CUDA=True):
         offset_x = offset_x.cuda()
         offset_y = offset_y.cuda()
 
-    offset_x_y = torch.cat((offset_x, offset_y), 1).view(-1, 2).squeeze(0)
+
+    offset_x_y = torch.cat((offset_x, offset_y), 1).repeat(anchor_num,
+                                                 1).view(-1, 2).squeeze(0)
     prediction[:, :, :2] += offset_x_y
 
     # Add log-space transforms
@@ -77,7 +79,7 @@ def pred_transform(prediction, in_dim, anchors, class_num, CUDA=True):
     prediction[:, :, 2:4] = torch.exp(prediction[:, :, 2:4])*anchors
 
     # Add sigmoid to classes possibility
-    prediction[:, :, 5:5 + class_num] = torch.sigmoid(prediction[:, :, 5 +
+    prediction[:, :, 5:5 + class_num] = torch.sigmoid(prediction[:, :, 5:5 +
                                                                 class_num])
 
     # Resize the detection map to the original image size

@@ -4,7 +4,7 @@
 
     Author           : Shaoshu Yang
     Email            : 13558615057@163.com
-    Last edit date   : Sept 5 23:37 2018
+    Last edit date   : Sept 6 23:47 2018
 
 South East University Automation College, 211189 Nanjing China
 
@@ -21,6 +21,24 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from src.utils import pred_transform
 import numpy as np
+import cv2
+
+def get_test_input(imgfile):
+    '''
+        Args:
+             imgfile   : (string) directory to image file
+        Returns:
+             Pre-processed image tensor
+    '''
+    img = cv2.imread(imgfile)
+    img = cv2.resize(img, (416,416))
+    img = img[:, :, ::-1].transpose((2, 0, 1))
+
+    # Add a dimension for batch & normalize
+    img = img[np.newaxis, :, :]/255.0
+    img = torch.from_numpy(img).float()
+    img = Variable(img)
+    return img
 
 def parse_cfg(cfgfile):
     '''
@@ -228,7 +246,7 @@ class darknet(nn.Module):
             # Add outputs of the previous layer
             # to the previous layer(-from_)
             elif module_type == "shortcut":
-                from_ = int(module["form"])
+                from_ = int(module["from"])
                 x = route_output[i - 1] + route_output[i + from_]
 
             elif module_type == "yolo":
@@ -345,7 +363,9 @@ class darknet(nn.Module):
 
 if __name__ == "__main__":
     model = darknet("C:/PycharmProjects/HPE/cfg/yolov3.cfg")
-    print(model)
+    input = get_test_input("C:/PycharmProjects/HPE/data/samples/dog.jpg")
+    pred = model(input, torch.cuda.is_available())
+    print(pred)
 
 
 
