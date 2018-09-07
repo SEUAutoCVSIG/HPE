@@ -291,7 +291,7 @@ class darknet(nn.Module):
         # ptr records the position of the forward mark
         ptr = 0
         for i in range(len(self.module_list)):
-            module_type = self.module_list[i+1]["type"]
+            module_type = self.blocks[i+1]["type"]
 
             # Only convolution layers load weights
             if module_type == "convolutional":
@@ -326,13 +326,13 @@ class darknet(nn.Module):
 
                     # Cast the loaded weight into the dims of model weights
                     bn_bias = bn_bias.view_as(BN.bias.data)
-                    bn_weights = bn_weights.view_as(BN.weights.data)
+                    bn_weights = bn_weights.view_as(BN.weight.data)
                     bn_running_mean = bn_running_mean.view_as(BN.running_mean)
-                    bn_running_var = bn_running_var.view_as(BN.running_Var)
+                    bn_running_var = bn_running_var.view_as(BN.running_var)
 
                     # Load the weights to the model
                     BN.bias.data.copy_(bn_bias)
-                    BN.weights.data.copy_(bn_weights)
+                    BN.weight.data.copy_(bn_weights)
                     BN.running_mean.copy_(bn_running_mean)
                     BN.running_var.copy_(bn_running_var)
 
@@ -363,6 +363,7 @@ class darknet(nn.Module):
 
 if __name__ == "__main__":
     model = darknet("C:/PycharmProjects/HPE/cfg/yolov3.cfg")
+    model.load_weight("C:/PycharmProjects/HPE/yolov3.weights")
     input = get_test_input("C:/PycharmProjects/HPE/data/samples/dog.jpg")
     pred = model(input, torch.cuda.is_available())
     print(pred)
