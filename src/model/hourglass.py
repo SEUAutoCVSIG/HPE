@@ -63,12 +63,12 @@ class StackedHourglass(nn.Module):
             Args:
                  chan_out  : (int) number of output channels
         '''
-        super(nn.Module, StackedHourglass).__init__()
+        super(StackedHourglass, self).__init__()
 
         # Initial processing of th image
         self.conv1 = nn.Conv2d(3, 64, 7, stride=2, padding=3)
         self.bn1 = nn.BatchNorm2d(64)
-        self.ReLU1 = nn.ReLU(inpace=True)
+        self.ReLU1 = nn.ReLU(inplace=True)
         self.r1 = Residual(64, 128)
         self.pool1 = nn.MaxPool2d(2, stride=2)
         self.r4 = Residual(128, 128)
@@ -82,12 +82,12 @@ class StackedHourglass(nn.Module):
         self.l1 = nn.Sequential(
             nn.Conv2d(512, 512, 1),
             nn.BatchNorm2d(512),
-            nn.ReLU(inpace=True)
+            nn.ReLU(inplace=True)
         )
         self.l2 = nn.Sequential(
             nn.Conv2d(512, 256, 1),
             nn.BatchNorm2d(256),
-            nn.ReLU(inpace=True)
+            nn.ReLU(inplace=True)
         )
 
         # First predicted heatmaps
@@ -104,12 +104,12 @@ class StackedHourglass(nn.Module):
         self.l3 = nn.Sequential(
             nn.Conv2d(512, 512, 1),
             nn.BatchNorm2d(512),
-            nn.ReLU(inpace=True)
+            nn.ReLU(inplace=True)
         )
         self.l4 = nn.Sequential(
             nn.Conv2d(512, 512, 1),
             nn.BatchNorm2d(512),
-            nn.ReLU(inpace=True)
+            nn.ReLU(inplace=True)
         )
 
         # Output heatmaps
