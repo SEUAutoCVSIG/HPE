@@ -2,8 +2,9 @@
 '''
     Created on wed Sept 6 19:34 2018
 
-    Author           : Shaoshu Yang
+    Author           : Shaoshu Yang, Heng Tan
     Email            : 13558615057@163.com
+                       1608857488@qq.com
     Last edit date   : Sept 6 23:47 2018
 
 South East University Automation College, 211189 Nanjing China
