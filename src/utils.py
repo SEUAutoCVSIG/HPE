@@ -46,9 +46,9 @@ def pred_transform(prediction, in_dim, anchors, class_num, CUDA=True):
     prediction = prediction.view(batch_size, bbox_attr*anchor_num,
                                  grid_size*grid_size)
     prediction = prediction.transpose(1, 2).contiguous()
-    prediction = prediction.view(batch_size, anchor_num*grid_size**2,
+    prediction = prediction.view(batch_size, anchor_num*grid_size*grid_size,
                                  bbox_attr)
-    anchors = [(a[0]//stride, a[1]//stride) for a in anchors]
+    anchors = [(a[0]/stride, a[1]/stride) for a in anchors]
 
     # Adding sigmoid to the x_coord, y__coord and objscore
     prediction[:, :, 0] = torch.sigmoid(prediction[:, :, 0])
@@ -67,8 +67,8 @@ def pred_transform(prediction, in_dim, anchors, class_num, CUDA=True):
         offset_y = offset_y.cuda()
 
 
-    offset_x_y = torch.cat((offset_x, offset_y), 1).repeat(anchor_num,
-                                                 1).view(-1, 2).squeeze(0)
+    offset_x_y = torch.cat((offset_x, offset_y), 1).repeat(1, anchor_num,
+                                                 ).view(-1, 2).unsqueeze(0)
     prediction[:, :, :2] += offset_x_y
 
     # Add log-space transforms
@@ -77,7 +77,7 @@ def pred_transform(prediction, in_dim, anchors, class_num, CUDA=True):
     if CUDA:
         anchors = anchors.cuda()
 
-    anchors = anchors.repeat(grid_size*grid_size, 1).squeeze(0)
+    anchors = anchors.repeat(grid_size*grid_size, 1).unsqueeze(0)
     prediction[:, :, 2:4] = torch.exp(prediction[:, :, 2:4])*anchors
 
     # Add sigmoid to classes possibility
@@ -125,8 +125,8 @@ def write_results(prediction, confidence, class_num, nms_conf=0.4):
         max_conf, max_conf_score = torch.max(img_pred[:, 5:5+class_num], 1)
         max_conf = max_conf.float().unsqueeze(1)
         max_conf_score = max_conf_score.float().unsqueeze(1)
-        seq = (image_pred[:, :5], max_conf, max_conf_score)
-        image_pred = torch.cat(seq, 1)
+        seq = (img_pred[:, :5], max_conf, max_conf_score)
+        img_pred = torch.cat(seq, 1)
 
         non_zero_id = torch.nonzero(img_pred[:, 4])
         try:
@@ -182,12 +182,12 @@ def write_results(prediction, confidence, class_num, nms_conf=0.4):
                 out = torch.cat(seq, 1)
                 output = torch.cat((output, out))
 
-        try:
-            # in case that output is empty
-            return output
+    try:
+        # in case that output is empty
+        return output
 
-        except:
-            return 0
+    except:
+        return 0
 
 def unique(tensor):
     """
@@ -213,26 +213,26 @@ def bbox_IOU(box1, box2):
              The IOU between box1 and box2
     '''
     # b.box coordinates
-    box1_x1, box1_y1, box1_x2, box1_y2 = box1[:, 0], box1[:, 1], box1[:, 2], \
-                                                                 box1[:, 3]
-    box2_x1, box2_y1, box2_x2, box2_y2 = box2[:, 0], box2[:, 1], box2[:, 2], \
-                                                                 box2[:, 3]
+    b1_x1, b1_y1, b1_x2, b1_y2 = box1[:, 0], box1[:, 1], box1[:, 2], box1[:, 3]
+    b2_x1, b2_y1, b2_x2, b2_y2 = box2[:, 0], box2[:, 1], box2[:, 2], box2[:, 3]
 
-    # Coordinates of internal rectangle
-    inter_rect_x1 = torch.max(box1_x1, box2_x1)
-    inter_rect_y1 = torch.max(box1_y1, box2_y1)
-    inter_rect_x2 = torch.max(box1_x2, box2_x2)
-    inter_rect_y2 = torch.max(box1_y2, box2_y2)
+    # get the corrdinates of the intersection rectangle
+    inter_rect_x1 = torch.max(b1_x1, b2_x1)
+    inter_rect_y1 = torch.max(b1_y1, b2_y1)
+    inter_rect_x2 = torch.min(b1_x2, b2_x2)
+    inter_rect_y2 = torch.min(b1_y2, b2_y2)
 
     # Intersection area
-    inter_s = torch.clamp(inter_rect_x2 - inter_rect_x1 + 1, min=0)*torch.clamp(
-                          inter_rect_y2 - inter_rect_y1 + 1, min=0)
+    inter_area = torch.clamp(inter_rect_x2 - inter_rect_x1 + 1, min=0) * \
+                 torch.clamp(inter_rect_y2 - inter_rect_y1 + 1, min=0)
 
-    # Union area
-    box1_s = (box1_x2 - box1_x1 + 1)*(box1_y2 - box1_y1 + 1)
-    box2_s = (box2_x2 - box2_x1 + 1)*(box2_y2 - box2_y1 + 1)
+    # Union Area
+    b1_area = (b1_x2 - b1_x1 + 1) * (b1_y2 - b1_y1 + 1)
+    b2_area = (b2_x2 - b2_x1 + 1) * (b2_y2 - b2_y1 + 1)
 
-    return inter_s/(box1_s + box2_s - inter_s)
+    iou = inter_area / (b1_area + b2_area - inter_area)
+
+    return iou
 
 def load_classes(classfile):
     '''
