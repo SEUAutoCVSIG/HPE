@@ -2,16 +2,17 @@
 '''
     Created on wed Sept 6 19:34 2018
 
-    Author           : Shaoshu Yang, Heng Tan
+    Author           : Shaoshu Yang, Heng Tan, Yue Han
     Email            : 13558615057@163.com
                        1608857488@qq.com
+                       1015985094@qq.com
     Last edit date   : Sept 6 23:47 2018
 
 South East University Automation College, 211189 Nanjing China
 
 The following codes referenced Ayoosh Kathuria's blog:
 How to implement a YOLO (v3) object detector from strach in
-PyTorch: Part 3
+PyTorch: Part 3/4/5
 '''
 
 from __future__ import division
@@ -112,7 +113,7 @@ def write_results(prediction, confidence, class_num, nms_conf=0.4):
     box_corner[:, :, 1] = (prediction[:, :, 1] - prediction[:, :, 3]/2)
     box_corner[:, :, 2] = (prediction[:, :, 0] + prediction[:, :, 2]/2)
     box_corner[:, :, 3] = (prediction[:, :, 1] + prediction[:, :, 3]/2)
-    prediction[:, :, :4] = box_corner[:, :, 4]
+    prediction[:, :, :4] = box_corner[:, :, :4]
 
     batch_size = prediction.size(0)
     write = 0
@@ -124,15 +125,16 @@ def write_results(prediction, confidence, class_num, nms_conf=0.4):
         max_conf, max_conf_score = torch.max(img_pred[:, 5:5+class_num], 1)
         max_conf = max_conf.float().unsqueeze(1)
         max_conf_score = max_conf_score.float().unsqueeze(1)
-        img_pred = torch.cat((img_pred[:, :5], max_conf, max_conf_score), 1)
+        seq = (image_pred[:, :5], max_conf, max_conf_score)
+        image_pred = torch.cat(seq, 1)
 
         non_zero_id = torch.nonzero(img_pred[:, 4])
         try:
-            img_pred_ = img_pred[non_zero_id, :].view(-1, 7)
+            img_pred_ = img_pred[non_zero_id.squeeze(), :].view(-1, 7)
         except:
             continue
 
-        if img_pred_.shape(0) == 0:
+        if img_pred_.shape[0] == 0:
             continue
 
         # Class number of the images in the batch
@@ -161,7 +163,7 @@ def write_results(prediction, confidence, class_num, nms_conf=0.4):
                     break
 
                 # Remove b.boxes when iou < nms_conf
-                IOU_mask = (IOUs < nms_conf).float().unsequeeze(1)
+                IOU_mask = (IOUs < nms_conf).float().unsqueeze(1)
                 img_pred_class[ind+1:] *= IOU_mask
                 non_zero_idx = torch.nonzero(img_pred_class[:, 4]).squeeze()
                 img_pred_class = img_pred_class[non_zero_idx].view(-1, 7)
@@ -231,4 +233,51 @@ def bbox_IOU(box1, box2):
     box2_s = (box2_x2 - box2_x1 + 1)*(box2_y2 - box2_y1 + 1)
 
     return inter_s/(box1_s + box2_s - inter_s)
+
+def load_classes(classfile):
+    '''
+        Args:
+             classfile   : (string) directory to class name file
+        Returns:
+             Splited file name list
+    '''
+    file = open(classfile, 'r')
+    names = file.read().split("\n")[:-1]
+    return names
+
+def letterbox_image(img, inp_dim):
+    '''
+        Args:
+             img        : (numpy.array) input image
+             inp_dim    : (list) required input image dimension
+        Returns:
+             Resized and padded image
+    '''
+    img_w, img_h = img.shape[1], img.shape[0]
+    w, h = inp_dim
+    new_w = int(img_w*min(w/img_w, h/img_h))
+    new_h = int(img_h*min(w/img_w, h/img_h))
+    resized_img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+
+    # Created a canvas for padding
+    canvas = np.full((inp_dim[1], inp_dim[0], 3), 128)
+    canvas[(h - new_h)//2:(h - new_h)//2 + new_h, (w - new_w)//2:(w - new_w)//2 + new_w, :]\
+                                                                    = resized_img
+
+    return canvas
+
+def prep_image(img, inp_dim):
+    '''
+        Args:
+             img        : (numpy.array) not pre-processed image
+             inp_dim    : (list) required input image dimension
+        Returns:
+             Pre-processed images
+    '''
+    img = (letterbox_image(img, (inp_dim, inp_dim)))
+
+    # Transform from BGR to RGB, HWC to CHW
+    img = img[:, :, ::-1].transpose((2, 0, 1)).copy()
+    img = torch.from_numpy(img).float().div(255.0).unsqueeze(0)
+    return img
 

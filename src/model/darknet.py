@@ -270,6 +270,7 @@ class darknet(nn.Module):
 
         return detections
 
+
     def load_weight(self, weightfile):
         '''
             Args:

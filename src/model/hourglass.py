@@ -12,7 +12,6 @@ South East University Automation College, 211189 Nanjing China
 from src.model.residual import Residual
 import torch.nn as nn
 
-
 # Definition of hourglass module
 class Hourglass(nn.Module):
     def __init__(self, chan_in, chan_out, n):
@@ -99,7 +98,7 @@ class StackedHourglass(nn.Module):
         self.cat1 = nn.Conv2d(256 + 128, 256 + 128, 1)
 
         # Second hourglass
-        self.hg2 = Hourglass(4, 256 + 128, 512)
+        self.hg2 = Hourglass(256 + 128, 512, 4)
 
         # Linear layers to produce predictions again
         self.l3 = nn.Sequential(
