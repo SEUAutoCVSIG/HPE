@@ -21,9 +21,8 @@ from torchvision import datasets, models, transforms
 import time
 import os
 
-'''
-You need to change the following parameters according to your own condition.
-'''
+# You need to change the following parameters according to your own condition.
+
 FolderPath = '/Users/midora/Desktop/Python/HPElocal/res/images'  # My local path
 Label = '/Users/midora/Desktop/Python/HPEOnline/res/mpii_human_pose_v1_u12_1.mat'
 chan_out = 1
@@ -36,10 +35,8 @@ model = StackedHourglass(chan_out)
 
 # Loss Function
 
-
 # SGD Optimizer
 optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-
 
 def train(Dataset, Model, Loss, Optimizer):
     # for i in range(0, mpii.amount):

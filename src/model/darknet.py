@@ -195,7 +195,7 @@ def create_modules(blocks):
 
 # darknet structure definition
 class darknet(nn.Module):
-    def __init__(self, cfgfile, lambda_coord=5):
+    def __init__(self, cfgfile, nms_thres, lambda_coord=5):
         '''
             Args:
                  cfgfile : (string) directory of *.cfg file
@@ -203,7 +203,10 @@ class darknet(nn.Module):
         super(darknet, self).__init__()
         self.lambda_coord = lambda_coord
         self.blocks = parse_cfg(cfgfile)
+        self.nms_thres = nms_thres
         self.net_info, self.module_list = create_modules(self.blocks)
+        self.loss_names = ["loss_x", "loss_y", "loss_w", "loss_h",
+                           "loss_conf", "loss_cls", "recall"]
 
     def forward(self, x, CUDA, target=None):
         '''
@@ -216,6 +219,8 @@ class darknet(nn.Module):
         '''
         # Cache the output of route layers
         train = target is not None
+        self.losses = {"loss_x": 0, "loss_y": 0, "loss_h": 0, "loss_conf": 0,
+                       "loss_cls": 0, "recall": 0}
         losses = []
         route_output = {}
 
@@ -263,9 +268,12 @@ class darknet(nn.Module):
                 # Add offset and log-spacial transform
                 x = x.data
                 if train:
-                    x, loss = pred_transform_train(x, in_dim, anchors, class_num,
-                                                   CUDA, target, self.lambda_coord)
-                    losses.append(loss)
+                    x, *loss = pred_transform_train(x, in_dim, anchors, class_num,
+                                  CUDA, target, self.nms_thres, self.lambda_coord)
+
+                    for loss_name, loss_val in zip(self.loss_names, loss[1:]):
+                        self.losses[loss_name] += loss_val
+                    losses.append(loss[0])
 
                 else:
                     x = pred_transform(x, in_dim, anchors, class_num, CUDA)
