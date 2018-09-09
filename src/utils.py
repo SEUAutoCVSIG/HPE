@@ -17,12 +17,26 @@ PyTorch: Part 3/4/5
 
 from __future__ import division
 
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 import numpy as np
 import cv2
+
+def cpu(tensor):
+    '''
+        Args:
+             tensor       : (tensor) input tensor
+        Returns:
+             Transfer tensors in GPU to CPU
+    '''
+    if tensor.is_cuda:
+        return torch.FloatTensor(tensor.size()).copy_(tensor)
+
+    else:
+        return tensor
 
 def pred_transform(prediction, in_dim, anchors, class_num, CUDA=True):
     '''
@@ -281,3 +295,196 @@ def prep_image(img, inp_dim):
     img = torch.from_numpy(img).float().div(255.0).unsqueeze(0)
     return img
 
+def pred_transform_train(prediction, dim_in, anchors, class_num, CUDA, target
+                                                     , threshold, lamda_coord):
+    '''
+        Args:
+             prediction     : (tensor) output from preceed layer
+             dim_in         : (int) dimension of feature map
+             anchor         : (list) anchor coordinates
+             class_num      : (int) class numbers
+             target         : (tensor) target labels
+             threshold      : (float) threshold for objectness score
+        Returns:
+             Loss and predictions
+    '''
+    batch_size = prediction.size(0)
+    stride = dim_in // prediction.size(2)
+    grid_size = prediction.size(2)
+    bbox_attr = 5 + class_num
+    anchor_num = len(anchors)
+
+    # Transfroms to the prediction
+    prediction = prediction.view(batch_size, bbox_attr * anchor_num,
+                                                          grid_size*grid_size)
+    prediction = prediction.transpose(1, 2).contiguous()
+    prediction = prediction.view(batch_size, anchor_num, grid_size, grid_size,
+                                                                    bbox_attr)
+
+    anchors = [(a[0] / stride, a[1] / stride) for a in anchors]
+
+    # Adding sigmoid to the x_coord, y__coord and objscore
+    prediction[..., 0] = torch.sigmoid(prediction[..., 0])
+    prediction[..., 1] = torch.sigmoid(prediction[..., 1])
+    prediction[..., 4] = torch.sigmoid(prediction[..., 4])
+
+    # Get outputs
+    x = prediction[..., 0]
+    y = prediction[..., 1]
+    w = prediction[..., 2]
+    h = prediction[..., 3]
+
+    grid = np.arange(grid_size)
+    a, b = np.meshgrid(grid, grid)
+
+    # Add offset to the central coordinates
+    offset_x = torch.FloatTensor(a).view(-1, 1)
+    offset_y = torch.FloatTensor(b).view(-1, 1)
+
+    if CUDA:
+        offset_x = offset_x.cuda()
+        offset_y = offset_y.cuda()
+
+    offset_x_y = torch.cat((offset_x, offset_y), 1).view(-1, 2).unsqueeze(0)
+    prediction[..., :2] += offset_x_y
+
+    # Add log-space transforms
+    anchors = torch.FloatTensor(anchors)
+
+    if CUDA:
+        anchors = anchors.cuda()
+
+    anchors = anchors.repeat(batch_size, grid_size * grid_size, 1, 1)\
+                                                     .transpose(1, 3)
+    prediction[..., 2:4] = torch.exp(prediction[..., 2:4]) * anchors
+
+    # Add sigmoid to classes possibility
+    prediction[..., 5:] = torch.sigmoid(prediction[..., 5:])
+
+    # Get parameters for loss evaluation
+    pred_boxes = torch.FloatTensor(prediction[..., :4].shape)
+    pred_boxes[..., 0] = prediction[..., 0]
+    pred_boxes[..., 1] = prediction[..., 1]
+    pred_boxes[..., 2] = prediction[..., 2]
+    pred_boxes[..., 3] = prediction[..., 3]
+    conf = prediction[..., 4]
+    pred_cls = prediction[..., 5:]
+
+    # Prepare the labels
+    nGT, nCorrect, mask, conf_mask, tx, ty, tw, th, tconf, tcls = build_target(
+        pred_boxes, target, anchors, class_num, grid_size, threshold)
+
+    # Evaluate losses
+    mask = Variable(torch.FloatTensor(mask))
+    cls_mask = Variable(torch.FloatTensor(mask.unsqueeze(-1).repeat(1, 1, 1, 1, class_num)))
+    conf_mask = Variable(torch.FloatTensor(conf_mask))
+
+    tx = Variable(torch.FloatTensor(tx), requires_grad=False)
+    ty = Variable(torch.FloatTensor(ty), requires_grad=False)
+    tw = Variable(torch.FloatTensor(tw), requires_grad=False)
+    th = Variable(torch.FloatTensor(th), requires_grad=False)
+    tconf = Variable(torch.FloatTensor(tconf), requires_grad=False)
+    tcls = Variable(torch.FloatTensor(tcls), requires_gread=False)
+
+    loss_x = lamda_coord*nn.BCELoss(x*mask, tx*mask)
+    loss_y = lamda_coord*nn.BCELoss(y*mask, ty*mask)
+    loss_w = lamda_coord*nn.MSELoss(w*mask, tw*mask)/2
+    loss_h = lamda_coord*nn.MSELoss(h*mask, th*mask)/2
+    loss_conf = nn.BCELoss(conf*conf_mask, tconf*conf_mask)
+    loss_cls = nn.BCELoss(pred_cls*cls_mask, tcls*cls_mask)
+    loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
+
+    # Resize the detection map to the original image size
+    prediction[:, :, :4] *= stride
+    prediction = prediction.view(batch_size, anchor_num*grid_size*grid_size,
+                                                                    bbox_attr)
+    return prediction, loss
+
+def build_target(pred_boxes, target, anchors, class_num, dim, threshold):
+    '''
+        Args:
+             pred_boxes     : (tensor) predicted bounding-boxes
+             target         : (tensor) label tensor
+             anchors        : (list) coordinates and scales of anchors
+             class_num      : (int) number of classes
+             dim            : (int) height or weight dimensions
+             threshold      : (float) threshold for objectness score
+        Returns:
+             Transformed targets for loss calculation
+    '''
+    nB = target.size(0)
+    anchor_num = len(anchors)
+
+    mask = torch.zeros(nB, anchor_num, dim, dim)
+    conf_mask = torch.ones(nB, anchor_num, dim, dim)
+    tx = torch.zeros(nB, anchor_num, dim, dim)
+    ty = torch.zeros(nB, anchor_num, dim, dim)
+    tw = torch.zeros(nB, anchor_num, dim, dim)
+    th = torch.zeros(nB, anchor_num, dim, dim)
+    tconf = torch.zeros(nB, anchor_num, dim, dim)
+    tcls = torch.zeros(nB, anchor_num, dim, dim, class_num)
+    nGT = 0
+
+    nCorrect = 0
+    for b in range(nB):
+        for t in range(target.shape[1]):
+            if target[b, t].sum() == 0:
+                continue
+
+            nGT += 1
+
+            # Convert to position relative to box
+            gx = target[b, t, 1] * dim
+            gy = target[b, t, 2] * dim
+            gw = target[b, t, 3] * dim
+            gh = target[b, t, 4] * dim
+
+            # Get grid box indices
+            gi = int(gx)
+            gj = int(gy)
+
+            # Get shape of gt box
+            gt_box = torch.FloatTensor(np.array([0, 0, gw, gh])).unsqueeze(0)
+
+            # Get shape of anchor box
+            anchor_shapes = torch.FloatTensor(np.concatenate((np.zeros((len(anchors), 2)),
+                                                              np.array(anchors)), 1))
+
+            # Calculate iou between gt and anchor shapes
+            anch_ious = bbox_IOU(gt_box, anchor_shapes)
+
+            # Where the overlap is larger than threshold set mask to zero (ignore)
+            # conf_mask[b, anch_ious > threshold] = 0
+
+            # Find the best matching anchor box
+            best_n = np.argmax(anch_ious)
+
+            # Get ground truth box
+            gt_box = torch.FloatTensor(np.array([gx, gy, gw, gh])).unsqueeze(0)
+
+            # Get the best prediction
+            pred_box = pred_boxes[b, best_n, gj, gi].unsqueeze(0)
+
+            # Masks
+            mask[b, best_n, gj, gi] = 1
+            conf_mask[b, best_n, gj, gi] = 1
+
+            # Coordinates
+            tx[b, best_n, gj, gi] = gx - gi
+            ty[b, best_n, gj, gi] = gy - gj
+
+            # Width and height
+            tw[b, best_n, gj, gi] = math.log(gw / anchors[best_n][0] + 1e-16)
+            th[b, best_n, gj, gi] = math.log(gh / anchors[best_n][1] + 1e-16)
+
+            # One-hot encoding of label
+            tcls[b, best_n, gj, gi, int(target[b, t, 0])] = 1
+
+            # Calculate iou between ground truth and best matching prediction
+            iou = bbox_IOU(gt_box, pred_box)
+            tconf[b, best_n, gj, gi] = 1
+
+            if iou > 0.5:
+                nCorrect += 1
+
+    return nGT, nCorrect, mask, conf_mask, tx, ty, tw, th, tconf, tcls

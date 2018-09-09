@@ -19,7 +19,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-from src.utils import pred_transform
+from src.utils import *
 import numpy as np
 import cv2
 
@@ -195,16 +195,17 @@ def create_modules(blocks):
 
 # darknet structure definition
 class darknet(nn.Module):
-    def __init__(self, cfgfile):
+    def __init__(self, cfgfile, lambda_coord=5):
         '''
             Args:
                  cfgfile : (string) directory of *.cfg file
         '''
         super(darknet, self).__init__()
+        self.lambda_coord = lambda_coord
         self.blocks = parse_cfg(cfgfile)
         self.net_info, self.module_list = create_modules(self.blocks)
 
-    def forward(self, x, CUDA):
+    def forward(self, x, CUDA, target=None):
         '''
             Args:
                  x       : (tensor) input tensor
@@ -214,6 +215,8 @@ class darknet(nn.Module):
                  The prediction of the network
         '''
         # Cache the output of route layers
+        train = target is not None
+        losses = []
         route_output = {}
 
         # Record if
@@ -259,7 +262,14 @@ class darknet(nn.Module):
 
                 # Add offset and log-spacial transform
                 x = x.data
-                x = pred_transform(x, in_dim, anchors, class_num, CUDA)
+                if train:
+                    x, loss = pred_transform_train(x, in_dim, anchors, class_num,
+                                                   CUDA, target, self.lambda_coord)
+                    losses.append(loss)
+
+                else:
+                    x = pred_transform(x, in_dim, anchors, class_num, CUDA)
+
                 if not write:
                     detections = x
                     write = 1
@@ -268,8 +278,7 @@ class darknet(nn.Module):
 
             route_output[i] = x
 
-        return detections
-
+        return sum(losses) if train else detections
 
     def load_weight(self, weightfile):
         '''
@@ -362,12 +371,61 @@ class darknet(nn.Module):
                 conv_weight = conv_weight.view_as(conv.weight.data)
                 conv.weight.data.copy_(conv_weight)
 
+    def save_weight(self, filename, cutoff=0):
+        '''
+            Args:
+                 dir          : (string) directory of the destination
+                 filename     : (string) file name of the saved model
+            Returns:
+                 Save weights for the model
+        '''
+        if cutoff <= 0:
+            cutoff = len(self.blocks) - 1
+
+        fp = open(filename, 'wb')
+
+        # Attach the header at the top of the file
+        self.header[3] = self.seen
+        header = self.header
+        header = header.numpy()
+        header.tofile(fp)
+
+        # Save weights
+        for i in range(len(self.module_list)):
+            module_type = self.blocks[i + 1]["type"]
+
+            if (module_type) == "convolutional":
+                model = self.module_list[i]
+
+                try:
+                    batch_normalize = int(self.blocks[i + 1]["batch_normalize"])
+
+                except:
+                    batch_normalize = 0
+
+                conv = model[0]
+                if (batch_normalize):
+
+                    bn = model[1]
+                    # If the parameters are on GPU, convert them back to CPU
+                    # We don't convert the parameter to GPU
+                    # Instead. we copy the parameter and then convert it to CPU
+                    # This is done as weight are need to be saved during training
+                    cpu(bn.bias.data).numpy().tofile(fp)
+                    cpu(bn.weight.data).numpy().tofile(fp)
+                    cpu(bn.running_mean).numpy().tofile(fp)
+                    cpu(bn.running_var).numpy().tofile(fp)
+
+                else:
+                    cpu(conv.bias.data).numpy().tofile(fp)
+
+                # Save the weights for the Convolutional layers
+                cpu(conv.weight.data).numpy().tofile(fp)
+
 if __name__ == "__main__":
     model = darknet("C:/PycharmProjects/HPE/cfg/yolov3.cfg")
     model.load_weight("C:/PycharmProjects/HPE/yolov3.weights")
-    input = get_test_input("C:/PycharmProjects/HPE/data/samples/dog.jpg")
-    pred = model(input, torch.cuda.is_available())
-    print(pred)
+    model.save_weight("C:/PycharmProjects/HPE/yolov3save_test.weights")
 
 
 

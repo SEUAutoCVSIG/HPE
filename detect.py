@@ -73,7 +73,7 @@ classes = load_classes("data/coco.names")
 #Set up the neural network
 print("Loading network.....")
 model = darknet("C:/PycharmProjects/HPE/cfg/yolov3.cfg")
-model.load_weight("C:/PycharmProjects/HPE/yolov3.weights")
+model.load_weight("C:/PycharmProjects/HPE/yolov3save_test.weights")
 print("Network successfully loaded")
 
 model.net_info["height"] = 416
