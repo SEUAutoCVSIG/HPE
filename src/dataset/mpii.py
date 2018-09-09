@@ -4,7 +4,7 @@
 
     Author          ：Yu Du
     Email           : 1239988498@qq.com
-    Last edit date  :
+    Last edit date  : Tue Sep 08 20:45 2018
 
 South East University Automation College, 211189 Nanjing China
 '''
@@ -12,42 +12,120 @@ South East University Automation College, 211189 Nanjing China
 import torch
 from PIL import Image
 import numpy as np
+import scipy.io as sio
+import scipy.misc as misc
 
-
-# imagepath = '/Users/midora/Desktop/Python/HPElocal/res/images/' # My local path
 
 class Mpii:
-    def __init__(self, imageFolderPath, ofile='res/images.txt'):
-        '''
-        param imageFolderPath: The path of MPII Folder
-        param ofile: It may not work well in Windows, so you need to give it yourself
-        '''
-        self.folder = imageFolderPath
-        self.ofile = ofile
+    '''
+    MPII Dataset
+    Iterator has already been a member variable
+    '''
+
+    def __init__(self, imageFolderPath, annoPath):
+        self.imageFolderPath = imageFolderPath + '/'
         self.idx = 0
-        self.image = ['0']  # This looks so stupid
-        with open(self.ofile, 'r') as ofileobj:
-            isFirst = True
-            for fname in ofileobj:
-                fname = fname.rstrip()
-                if (isFirst):  # As well as this
-                    self.image[0] = self.folder + '/' + fname
-                    isFirst = False
-                self.image.append(self.folder + '/' + fname)
-                '''
-                self.image is a list whose elements are full path of one image
-                '''
-        self.amount = len(self.image)
+        # Load in annotation
+        self.anno = sio.loadmat(annoPath)['RELEASE']
+        self.num_img = self.anno['img_train'][0][0][0].shape[0]
+        # Index of Part
+        self.parts = ['rank', 'rkne', 'rhip',
+                      'lhip', 'lkne', 'lank',
+                      'pelv', 'thrx', 'neck', 'head',
+                      'rwri', 'relb', 'rsho',
+                      'lsho', 'lelb', 'lwri']
+        self.num_part = len(self.parts)
+        print(type(self.anno['annolist'][0][0][0]['image']))
 
     def loadimg(self):
         '''
-        return: Tensor of image(for *.jpg the number of channel is 3)
-        "return 0" means one epoch has been completed.
+        Return: Current Image
         '''
-        if (self.idx == self.amount):
+        if (self.idx >= self.num_img):
             return 0
-        img = Image.open(self.image[self.idx], "r")
+        fname = self.imageFolderPath + str(self.anno['annolist'][0][0][0]['image'][self.idx][0]['name'][0][0])
         self.idx += 1
-        imgnp = np.array(img)
-        imgTen = torch.from_numpy(imgnp)
-        return imgTen
+        return misc.imread(fname)
+
+    def isTrain(self):
+        '''
+        Should be used before other functions
+        Return: bool type
+        '''
+        return (self.anno['img_train'][0][0][0][self.idx] and
+                self.anno['annolist'][0][0][0]['annorect'][self.idx].size > 0 and
+                'annopoints' in self.anno['annolist'][0][0][0]['annorect'][self.idx].dtype.fields)
+
+    def num_pp(self):
+        '''
+        Return: Number of people showed in current image
+        '''
+        example = self.anno['annolist'][0][0][0]['annorect'][self.idx]
+        if len(example) > 0:
+            return len(example[0])
+        else:
+            return 0
+
+    def location(self, idx_pp):
+        '''
+        param idx_pp: index for people in this image
+        return: (object position(np.array), scale(float))
+        '''
+        example = self.anno['annolist'][0][0][0]['annorect'][self.idx]
+        if ((not (example.dtype.fields is None)) and
+                'scale' in example.dtype.fields and
+                example['scale'][0][idx_pp].size > 0 and
+                example['objpos'][0][idx_pp].size > 0):
+            scale = example['scale'][0][idx_pp][0][0]
+            x = example['objpos'][0][idx_pp][0][0]['x'][0][0]
+            y = example['objpos'][0][idx_pp][0][0]['y'][0][0]
+            return np.array([x, y]), scale
+        else:
+            # If there is no "scale" and "object position" data
+            return [-1, -1], -1
+
+    def partinfo(self, idx_pp, part):
+        '''
+        param idx_pp: index for people in this image
+        param part: both index of part and part name is OK
+        return: (joint position(np.array), isVisible(bool))
+        '''
+        # unify the parameter's type
+        if type(part) == type(''):
+            part = self.parts.index(part)
+        example = self.anno['annolist'][0][0][0]['annorect'][self.idx]
+        if example['annopoints'][0][idx_pp].size > 0:
+            parts_info = example['annopoints'][0][idx_pp][0][0][0][0]
+            for i in range(len(parts_info)):
+                if parts_info[i]['id'][0][0] == part:
+                    # Since the original annotation is confused
+                    if 'is_visible' in parts_info.dtype.fields:
+                        v = parts_info[i]['is_visible']
+                        v = v[0][0] if len(v) > 0 else 1
+                        if type(v) is str:
+                            v = int(v)
+                    else:
+                        v = 1
+                    return np.array([parts_info[i]['x'][0][0], parts_info[i]['y'][0][0]], int), v
+            return np.zeros(2, int), 0
+        return -np.ones(2, int), -1
+
+    # The following code's usage is sill unclear
+    def normalization(self, idx_pp):
+        # Get head height for distance normalization
+        if self.istrain(self.idx):
+            example = self.anno['annolist'][0][0][0]['annorect'][self.idx]
+            x1, y1 = int(example['x1'][0][idx_pp][0][0]), int(example['y1'][0][idx_pp][0][0])
+            x2, y2 = int(example['x2'][0][idx_pp][0][0]), int(example['y2'][0][idx_pp][0][0])
+            diff = np.array([y2 - y1, x2 - x1], np.float)
+            return np.linalg.norm(diff) * .6
+        return -1
+
+    def torsoangle(self, idx_pp):
+        # Get angle from pelvis to thorax, 0 means the torso is up vertically
+        pt1 = self.partinfo(self.idx, idx_pp, 'pelv')[0]
+        pt2 = self.partinfo(self.idx, idx_pp, 'thrx')[0]
+        if not (pt1[0] - pt2[0] == 0):
+            return 90 + np.arctan2(pt2[1] - pt1[1], pt2[0] - pt1[0]) * 180. / np.pi
+        else:
+            return 0
