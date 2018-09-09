@@ -6,7 +6,7 @@
     Email            : 13558615057@163.com
                        1608857488@qq.com
                        1015985094@qq.com
-    Last edit date   : Sept 6 23:47 2018
+    Last edit date   : Sept 9 15:34 2018
 
 South East University Automation College, 211189 Nanjing China
 
@@ -398,7 +398,12 @@ def pred_transform_train(prediction, dim_in, anchors, class_num, CUDA, target
     prediction[:, :, :4] *= stride
     prediction = prediction.view(batch_size, anchor_num*grid_size*grid_size,
                                                                     bbox_attr)
-    return prediction, loss
+
+    # Get recall
+
+    recall = float(nCorrect / nGT) if nGT else 1
+    return prediction, loss, loss_x.item(), loss_y.item(), loss_w.item(),\
+            loss_h.item(), loss_conf.item(), loss_cls.item(), recall
 
 def build_target(pred_boxes, target, anchors, class_num, dim, threshold):
     '''
@@ -454,7 +459,7 @@ def build_target(pred_boxes, target, anchors, class_num, dim, threshold):
             anch_ious = bbox_IOU(gt_box, anchor_shapes)
 
             # Where the overlap is larger than threshold set mask to zero (ignore)
-            # conf_mask[b, anch_ious > threshold] = 0
+            conf_mask[b, anch_ious > threshold] = 0
 
             # Find the best matching anchor box
             best_n = np.argmax(anch_ious)
