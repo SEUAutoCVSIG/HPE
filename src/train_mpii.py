@@ -37,11 +37,13 @@ FolderPath = '/Users/midora/Desktop/Python/HPElocal/res/images'
 Annotation = '/Users/midora/Desktop/Python/HPEOnline/res/mpii_human_pose_v1_u12_1.mat'
 
 chan_out = 1
+epochs = 1
 batch_size = 1
 shuffle = True
 sampler = None
 num_workers = 0
 transforms = T.Compose([
+    T.Resize(256),
     T.ToTensor()
 ])
 '''********************************************************************'''
@@ -55,19 +57,24 @@ dataloader = DataLoader(
     # sampler,
     # num_workers,
 )
+mpiidataset.heatmap(4, 0, 10)
 
 # Model
 model = StackedHourglass(chan_out)
 
 # Loss Function
+# loss = nn.MSELoss(size_average=False, reduce=False)
 
 # SGD Optimizer
 optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 
 
-def train(Dataloader, Model, Loss, Optimizer):
+def train(Model, DataLoader, epochs, batch_size, learn_rate, momentum):
+    pass
+
+def train_(Dataloader, Model, Loss, Optimizer):
     for i in range(0, mpiidataset.num_img):
         output = model.forward(dataloader[i])
     print(output)
     # Save the model
-    torch.save(model.state_dict(), 'src.modeldata')
+    torch.save(model.state_dict(), 'data.SHdata')

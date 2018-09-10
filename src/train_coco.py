@@ -11,9 +11,7 @@ South East University Automation College, 211189 Nanjing China
 
 from src.dataset.coco import *
 from src.model.darknet import darknet
-
 import time
-
 import torch
 from torch.utils.data import DataLoader
 from torchvision import datasets
