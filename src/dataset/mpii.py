@@ -13,7 +13,6 @@ import torch
 from PIL import Image
 import numpy as np
 import scipy.io as sio
-import scipy.misc as misc
 
 
 class Mpii:
@@ -24,7 +23,6 @@ class Mpii:
 
     def __init__(self, imageFolderPath, annoPath):
         self.imageFolderPath = imageFolderPath + '/'
-        self.idx = 0
         # Load in annotation
         self.anno = sio.loadmat(annoPath)['RELEASE']
         self.num_img = self.anno['img_train'][0][0][0].shape[0]
@@ -35,43 +33,35 @@ class Mpii:
                       'rwri', 'relb', 'rsho',
                       'lsho', 'lelb', 'lwri']
         self.num_part = len(self.parts)
-        print(type(self.anno['annolist'][0][0][0]['image']))
 
-    def loadimg(self):
-        '''
-        Return: Current Image
-        '''
-        if (self.idx >= self.num_img):
-            return 0
-        fname = self.imageFolderPath + str(self.anno['annolist'][0][0][0]['image'][self.idx][0]['name'][0][0])
-        self.idx += 1
-        return misc.imread(fname)
+    def getname(self, idx):
+        return self.imageFolderPath + str(self.anno['annolist'][0][0][0]['image'][idx][0]['name'][0][0])
 
-    def isTrain(self):
+    def isTrain(self, idx):
         '''
         Should be used before other functions
         Return: bool type
         '''
-        return (self.anno['img_train'][0][0][0][self.idx] and
-                self.anno['annolist'][0][0][0]['annorect'][self.idx].size > 0 and
-                'annopoints' in self.anno['annolist'][0][0][0]['annorect'][self.idx].dtype.fields)
+        return (self.anno['img_train'][0][0][0][idx] and
+                self.anno['annolist'][0][0][0]['annorect'][idx].size > 0 and
+                'annopoints' in self.anno['annolist'][0][0][0]['annorect'][idx].dtype.fields)
 
-    def num_pp(self):
+    def num_pp(self, idx):
         '''
         Return: Number of people showed in current image
         '''
-        example = self.anno['annolist'][0][0][0]['annorect'][self.idx]
+        example = self.anno['annolist'][0][0][0]['annorect'][idx]
         if len(example) > 0:
             return len(example[0])
         else:
             return 0
 
-    def location(self, idx_pp):
+    def location(self, idx, idx_pp):
         '''
         param idx_pp: index for people in this image
         return: (object position(np.array), scale(float))
         '''
-        example = self.anno['annolist'][0][0][0]['annorect'][self.idx]
+        example = self.anno['annolist'][0][0][0]['annorect'][idx]
         if ((not (example.dtype.fields is None)) and
                 'scale' in example.dtype.fields and
                 example['scale'][0][idx_pp].size > 0 and
@@ -84,7 +74,7 @@ class Mpii:
             # If there is no "scale" and "object position" data
             return [-1, -1], -1
 
-    def partinfo(self, idx_pp, part):
+    def partinfo(self, idx, idx_pp, part):
         '''
         param idx_pp: index for people in this image
         param part: both index of part and part name is OK
@@ -93,7 +83,7 @@ class Mpii:
         # unify the parameter's type
         if type(part) == type(''):
             part = self.parts.index(part)
-        example = self.anno['annolist'][0][0][0]['annorect'][self.idx]
+        example = self.anno['annolist'][0][0][0]['annorect'][idx]
         if example['annopoints'][0][idx_pp].size > 0:
             parts_info = example['annopoints'][0][idx_pp][0][0][0][0]
             for i in range(len(parts_info)):
@@ -110,21 +100,21 @@ class Mpii:
             return np.zeros(2, int), 0
         return -np.ones(2, int), -1
 
-    # The following code's usage is sill unclear
-    def normalization(self, idx_pp):
+    def normalization(self, idx, idx_pp):
         # Get head height for distance normalization
-        if self.istrain(self.idx):
-            example = self.anno['annolist'][0][0][0]['annorect'][self.idx]
+        if self.isTrain(idx):
+            example = self.anno['annolist'][0][0][0]['annorect'][idx]
             x1, y1 = int(example['x1'][0][idx_pp][0][0]), int(example['y1'][0][idx_pp][0][0])
             x2, y2 = int(example['x2'][0][idx_pp][0][0]), int(example['y2'][0][idx_pp][0][0])
             diff = np.array([y2 - y1, x2 - x1], np.float)
+            # Calculate norm 2(Why?)
             return np.linalg.norm(diff) * .6
         return -1
 
-    def torsoangle(self, idx_pp):
-        # Get angle from pelvis to thorax, 0 means the torso is up vertically
-        pt1 = self.partinfo(self.idx, idx_pp, 'pelv')[0]
-        pt2 = self.partinfo(self.idx, idx_pp, 'thrx')[0]
+    def torsoangle(self, idx, idx_pp):
+        # Get angle from pelvis to thorax(angle of the body), 0 means the torso is up vertically
+        pt1 = self.partinfo(idx, idx_pp, 'pelv')[0]
+        pt2 = self.partinfo(idx, idx_pp, 'thrx')[0]
         if not (pt1[0] - pt2[0] == 0):
             return 90 + np.arctan2(pt2[1] - pt1[1], pt2[0] - pt1[0]) * 180. / np.pi
         else:
