@@ -104,6 +104,17 @@ class COCO(Dataset):
     def show_dataset(self):
         for i, anno in enumerate(self.ann_list):
             img = cv2.imread(self.root + "train/" + anno["name"])
+
+            '''
+            label = np.array(anno["bbox"])
+            for bbox in anno["bbox"]:
+                draw_rect(bbox, img)
+
+            cv2.imshow('labeled.jpg', img)
+            cv2.waitKey(500)
+            '''
+
+
             img_h, img_w = img.shape(0), img.shape(1)
 
             new_w = int(img_w * min(self.img_size / img_h, self.img_size / img_w))
@@ -124,26 +135,28 @@ class COCO(Dataset):
             label[:, 1] *= new_h / img_h
             label[:, 2] *= new_w / img_w
             label[:, 3] *= new_h / img_h
+            label[:, 0] += pad_w
+            label[:, 1] += pad_h
 
             for bbox in anno["bbox"]:
                 draw_rect(bbox, img)
 
             cv2.imshow(img)
 
+
 def draw_rect(bbox, img):
-    coord1 = bbox[:2]
-    coord2 = bbox[2:]
+    x1 = int(bbox[0])
+    y1 = int(bbox[1])
+    x2 = int(x1 + bbox[2])
+    y2 = int(y1 + bbox[3])
+    coord1 = (x1, y1)
+    coord2 = (x2, y2)
     cv2.rectangle(img, coord1, coord2, (0, 255, 0), 2)
     return img
 
-
-
-
-
-
 if __name__ == '__main__':
-    coco = COCO("C:/PycharmProjects/HPE/", "data/coco_anno.txt")
-    print(len(coco))
+    coco = COCO("D:/ShaoshuYang/COCO/", "coco_anno.txt")
+    coco.show_dataset()
 
 
 
