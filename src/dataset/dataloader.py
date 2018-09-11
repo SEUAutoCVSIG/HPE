@@ -4,7 +4,7 @@
 
     Author          ：Yu Du
     Email           : 1239988498@qq.com
-    Last edit date  : Tue Sep 06 01:09 2018
+    Last edit date  : Tue Sep 10 21:43 2018
 
 South East University Automation College, 211189 Nanjing China
 '''
@@ -19,10 +19,12 @@ import scipy.misc as misc
 import h5py
 from src.dataset.mpii import Mpii
 import cv2
+import os
+from math import *
 
 keys = ['index', 'person', 'imgname', 'center', 'scale', 'part', 'visible', 'normalize', 'torsoangle', 'multi',
         'istrain']
-
+imgidlen = 9
 
 class People:
     '''
@@ -54,7 +56,7 @@ class DataContainer:
 
     def __init__(self, mpii, idx):
         self.idx = idx
-        self.imgname = mpii.getname(idx)
+        self.imgname = mpii.getimgname(idx) # Just file name
         self.num_pp = mpii.num_pp(idx)
         self.istrain = mpii.isTrain(idx)
         self.peoples = []
@@ -82,6 +84,7 @@ class MpiiDataset(data.Dataset):
         self.num_img = mpii.num_img
         self.containers = []
         self.transforms = transforms
+        self.imageFolderPath = imageFolderPath
         for imidx in range(self.num_img):
             self.containers += [DataContainer(mpii, imidx)]
 
@@ -91,8 +94,8 @@ class MpiiDataset(data.Dataset):
         obj[idx] == obj.__getitem__(idx) (e.g. obj: MpiiDataset[idx] return PIL Image type)
         '''
         try:
-            fname = self.containers[idx].imgname
-            data = Image.open(fname, "r")
+            fpath = self.getfullpath(idx)
+            data = Image.open(fpath, "r")
             if self.transforms:
                 data = self.transforms(data)
             return data
@@ -104,13 +107,16 @@ class MpiiDataset(data.Dataset):
     def __len__(self):
         return self.num_img
 
+    def getfullpath(self, idx):
+        return self.imageFolderPath + '/' + self.containers[idx].imgname
+
     def loadimg(self, idx):
         '''
         Return: PIL Image
         '''
         if (idx >= self.num_img):
             return 0
-        fname = self.containers[idx].imgname
+        fname = self.getfullpath(idx)
         return Image.open(fname, "r")
 
     def Im2Tensor(self, idx):
@@ -150,3 +156,59 @@ class MpiiDataset(data.Dataset):
             heatmap = self.calcul_heatmap(width, height, joint_x, joint_y, 25)
             plt.imshow(heatmap)
             plt.show()
+
+    def __makedir(self, path):
+        # remove blank
+        path = path.strip()
+        # remove '\\' at the end (for Windows)
+        path = path.rstrip('\\')
+        #remove '/' at the end (for Linux)
+        path = path.rstrip('/')
+        isExist = os.path.exists(path)
+        if not isExist:
+            os.makedirs(path)
+
+    def __saveAugImage(self, idx, img):
+        path = self.imageFolderPath[:-len('images')]+'images_augmentation/'
+        self.__makedir(path)
+        i = 0
+        while True:
+            imgpath = path + self.containers[idx].imgname[:-len('.jpg')] + '_' + str(i) + '.jpg'
+            if not os.path.isfile(imgpath):
+                break
+            i += 1
+        cv2.imwrite(imgpath, img)
+        print('Save successfully: ', imgpath)
+
+    def rotate(self, idx, degree):
+        img = cv2.imread("/Users/midora/Desktop/Python/HPElocal/res/images/008115925.jpg")
+
+        height, width = img.shape[:2]
+        heightNew = int(width * fabs(sin(radians(degree))) + height * fabs(cos(radians(degree))))
+        widthNew = int(height * fabs(sin(radians(degree))) + width * fabs(cos(radians(degree))))
+
+        matRotation = cv2.getRotationMatrix2D((width / 2, height / 2), degree, 1)
+
+        matRotation[0,2] +=(widthNew-width)/2  #重点在这步，目前不懂为什么加这步
+        matRotation[1,2] +=(heightNew-height)/2  #重点在这步
+
+        imgRotation = cv2.warpAffine(img, matRotation, (widthNew, heightNew), borderValue=(255, 255, 255))
+
+    def resize(self, idx, pixel):
+        pass
+
+    def scale(self, idx, scaling, save=False):
+        img = cv2.imread(self.getfullpath(idx))
+        cv2.imshow("img", img)
+        if(scaling >= 1):
+            img = cv2.resize(img, None, fx=scaling, fy=scaling, interpolation=cv2.INTER_CUBIC)
+        elif(scaling <= 0):
+            print('Bad Argument')
+            return
+        else:
+            img = cv2.resize(img, None, fx=scaling, fy=scaling, interpolation=cv2.INTER_AREA)
+        if save:
+            self.__saveAugImage(idx, img)
+        else:
+            cv2.imshow("imgScaling", img)
+            cv2.waitKey(0)

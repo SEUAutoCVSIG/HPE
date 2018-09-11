@@ -57,7 +57,9 @@ dataloader = DataLoader(
     # sampler,
     # num_workers,
 )
-mpiidataset.heatmap(4, 0, 10)
+mpiidataset.scale(20, 0.75, save=True)
+mpiidataset.scale(21, 0.75, save=True)
+mpiidataset.scale(22, 0.75, save=True)
 
 # Model
 model = StackedHourglass(chan_out)
