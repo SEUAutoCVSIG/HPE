@@ -13,6 +13,7 @@ from src.dataset.coco import *
 from src.model.darknet import darknet
 
 import time
+import sys
 
 import torch
 from torch.utils.data import DataLoader
@@ -41,7 +42,7 @@ def train(model, root, list_dir, epochs, batch_size, learn_rate, momentum,
     '''
     # Define data loader
     data_loader = torch.utils.data.DataLoader(COCO(root, list_dir), batch_size=
-                                              batch_size, shuffle=True)
+                                              batch_size, shuffle=False)
 
     # Define optimizer
     optimizer = optim.SGD(model.parameters(), lr=learn_rate, momentum=momentum,
@@ -49,6 +50,7 @@ def train(model, root, list_dir, epochs, batch_size, learn_rate, momentum,
 
     cuda = torch.cuda.is_available()
     Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+    losses = []
 
     # Train process
     for epoch in range(epochs):
@@ -62,24 +64,32 @@ def train(model, root, list_dir, epochs, batch_size, learn_rate, momentum,
             loss.backward()
             optimizer.step()
 
-        # Output train info
-        print('[Epoch %d/%d, Batch %d/%d] [Losses: x %f, y %f, w %f, h %f, conf %f, \
+            # Output train info
+            print('[Epoch %d/%d, Batch %d/%d] [Losses: x %f, y %f, w %f, h %f, conf %f, \
                                                     cls %f, total %f, recall: %.5f]' %
-                                        (epoch, epochs, batch_size, len(data_loader),
-               model.losses['loss_x'], model.losses['loss_y'], model.losses['loss_w'],
-               model.losses['loss_h'], model.losses['loss_conf'], model.losses['loss_cls'],
+                                        (epoch, epochs, i, len(data_loader),
+               model.losses['x'], model.losses['y'], model.losses['w'],
+               model.losses['h'], model.losses['conf'], model.losses['cls'],
                loss.item(), model.losses['recall']))
+            losses.append(loss.item())
 
         if epoch % check_point == 0:
             model.save_weight(weight_file_name)
 
+    file = open("loss_recorder.txt", 'w')
+    sys.stdout = file
+    for loss_ in losses:
+        print(" {}".format(loss_))
+
+    file.close()
+
 if __name__ == '__main__':
-    model = darknet("HPE/cfg/yolov3-1.cfg")
+    model = darknet("D:/ShaoshuYang/HPE/cfg/yolov3-1.cfg")
 
     if torch.cuda.is_available():
         model.cuda()
 
     model.train()
 
-    train(model, "HPE/", "HPE/data/coco_anno.txt", 100, 64, 0.001, 0.9, 0.0005, 10,
+    train(model, "D:/ShaoshuYang/COCO/", "coco_anno.txt", 30, 16, 0.001, 0.9, 0.0005, 5,
           "yolov3-1.weights")

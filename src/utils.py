@@ -25,6 +25,73 @@ from torch.autograd import Variable
 import numpy as np
 import cv2
 
+def non_max_suppression(prediction, num_classes, conf_thres=0.5, nms_thres=0.4):
+    """
+    Removes detections with lower object confidence score than 'conf_thres' and performs
+    Non-Maximum Suppression to further filter detections.
+    Returns detections with shape:
+        (x1, y1, x2, y2, object_conf, class_score, class_pred)
+    """
+
+    # From (center x, center y, width, height) to (x1, y1, x2, y2)
+    box_corner = prediction.new(prediction.shape)
+    box_corner[:, :, 0] = prediction[:, :, 0] - prediction[:, :, 2] / 2
+    box_corner[:, :, 1] = prediction[:, :, 1] - prediction[:, :, 3] / 2
+    box_corner[:, :, 2] = prediction[:, :, 0] + prediction[:, :, 2] / 2
+    box_corner[:, :, 3] = prediction[:, :, 1] + prediction[:, :, 3] / 2
+    prediction[:, :, :4] = box_corner[:, :, :4]
+
+    output = [None for _ in range(len(prediction))]
+    for image_i, image_pred in enumerate(prediction):
+        # Filter out confidence scores below threshold
+        conf_mask = (image_pred[:, 4] >= conf_thres).squeeze()
+        image_pred = image_pred[conf_mask]
+        # If none are remaining => process next image
+        if not image_pred.size(0):
+            continue
+        # Get score and class with highest confidence
+        class_conf, class_pred = torch.max(image_pred[:, 5:5 + num_classes], 1,
+                                                                    keepdim=True)
+
+        # Detections ordered as (x1, y1, x2, y2, obj_conf, class_conf, class_pred)
+        detections = torch.cat((image_pred[:, :5], class_conf.float(),
+                                                        class_pred.float()), 1)
+
+        # Iterate through all predicted classes
+        unique_labels = detections[:, -1].cpu().unique()
+        if prediction.is_cuda:
+            unique_labels = unique_labels.cuda()
+        for c in unique_labels:
+            # Get the detections with the particular class
+            detections_class = detections[detections[:, -1] == c]
+
+            # Sort the detections by maximum objectness confidence
+            _, conf_sort_index = torch.sort(detections_class[:, 4], descending=True)
+            detections_class = detections_class[conf_sort_index]
+
+            # Perform non-maximum suppression
+            max_detections = []
+            while detections_class.size(0):
+                # Get detection with highest confidence and save as max detection
+                max_detections.append(detections_class[0].unsqueeze(0))
+
+                # Stop if we're at the last detection
+                if len(detections_class) == 1:
+                    break
+                # Get the IOUs for all boxes with lower confidence
+                ious = bbox_IOU(max_detections[-1], detections_class[1:])
+
+                # Remove detections with IoU >= NMS threshold
+                detections_class = detections_class[1:][ious < nms_thres]
+
+            max_detections = torch.cat(max_detections).data
+
+            # Add max detections to outputs
+            output[image_i] = max_detections if output[image_i] is None else \
+                torch.cat((output[image_i], max_detections))
+
+    return output
+
 def cpu(tensor):
     '''
         Args:
@@ -218,7 +285,7 @@ def unique(tensor):
     tensor_res.copy_(unique_tensor)
     return tensor_res
 
-def bbox_IOU(box1, box2):
+def bbox_IOU(box1, box2, x1y1x2y2=True):
     '''
         Args:
              box1     : (tensor) coordinates of box1
@@ -226,25 +293,30 @@ def bbox_IOU(box1, box2):
         Returns:
              The IOU between box1 and box2
     '''
-    # b.box coordinates
-    b1_x1, b1_y1, b1_x2, b1_y2 = box1[:, 0], box1[:, 1], box1[:, 2], box1[:, 3]
-    b2_x1, b2_y1, b2_x2, b2_y2 = box2[:, 0], box2[:, 1], box2[:, 2], box2[:, 3]
+    if not x1y1x2y2:
+        # Transform from center and width to exact coordinates
+        b1_x1, b1_x2 = box1[:, 0] - box1[:, 2] / 2, box1[:, 0] + box1[:, 2] / 2
+        b1_y1, b1_y2 = box1[:, 1] - box1[:, 3] / 2, box1[:, 1] + box1[:, 3] / 2
+        b2_x1, b2_x2 = box2[:, 0] - box2[:, 2] / 2, box2[:, 0] + box2[:, 2] / 2
+        b2_y1, b2_y2 = box2[:, 1] - box2[:, 3] / 2, box2[:, 1] + box2[:, 3] / 2
+    else:
+        # Get the coordinates of bounding boxes
+        b1_x1, b1_y1, b1_x2, b1_y2 = box1[:,0], box1[:,1], box1[:,2], box1[:,3]
+        b2_x1, b2_y1, b2_x2, b2_y2 = box2[:,0], box2[:,1], box2[:,2], box2[:,3]
 
     # get the corrdinates of the intersection rectangle
-    inter_rect_x1 = torch.max(b1_x1, b2_x1)
-    inter_rect_y1 = torch.max(b1_y1, b2_y1)
-    inter_rect_x2 = torch.min(b1_x2, b2_x2)
-    inter_rect_y2 = torch.min(b1_y2, b2_y2)
-
+    inter_rect_x1 =  torch.max(b1_x1, b2_x1)
+    inter_rect_y1 =  torch.max(b1_y1, b2_y1)
+    inter_rect_x2 =  torch.min(b1_x2, b2_x2)
+    inter_rect_y2 =  torch.min(b1_y2, b2_y2)
     # Intersection area
-    inter_area = torch.clamp(inter_rect_x2 - inter_rect_x1 + 1, min=0) * \
-                 torch.clamp(inter_rect_y2 - inter_rect_y1 + 1, min=0)
-
+    inter_area =    torch.clamp(inter_rect_x2 - inter_rect_x1 + 1, min=0) * \
+                    torch.clamp(inter_rect_y2 - inter_rect_y1 + 1, min=0)
     # Union Area
     b1_area = (b1_x2 - b1_x1 + 1) * (b1_y2 - b1_y1 + 1)
     b2_area = (b2_x2 - b2_x1 + 1) * (b2_y2 - b2_y1 + 1)
 
-    iou = inter_area / (b1_area + b2_area - inter_area)
+    iou = inter_area / (b1_area + b2_area - inter_area + 1e-16)
 
     return iou
 
@@ -295,7 +367,7 @@ def prep_image(img, inp_dim):
     img = torch.from_numpy(img).float().div(255.0).unsqueeze(0)
     return img
 
-def pred_transform_train(prediction, dim_in, anchors, class_num, CUDA, target
+def pred_transform_train(model, prediction, dim_in, anchors, class_num, CUDA, target
                                                      , threshold, lamda_coord):
     '''
         Args:
@@ -329,10 +401,10 @@ def pred_transform_train(prediction, dim_in, anchors, class_num, CUDA, target
     prediction[..., 4] = torch.sigmoid(prediction[..., 4])
 
     # Get outputs
-    x = prediction[..., 0]
-    y = prediction[..., 1]
-    w = prediction[..., 2]
-    h = prediction[..., 3]
+    x = prediction[..., 0].clone()
+    y = prediction[..., 1].clone()
+    w = prediction[..., 2].clone()
+    h = prediction[..., 3].clone()
 
     grid = np.arange(grid_size)
     a, b = np.meshgrid(grid, grid)
@@ -345,7 +417,8 @@ def pred_transform_train(prediction, dim_in, anchors, class_num, CUDA, target
         offset_x = offset_x.cuda()
         offset_y = offset_y.cuda()
 
-    offset_x_y = torch.cat((offset_x, offset_y), 1).view(-1, 2).unsqueeze(0)
+    offset_x_y = torch.cat((offset_x, offset_y), 1).view(-1, grid_size, grid_size,
+                                                         2).repeat(1, 3, 1, 1, 1)
     prediction[..., :2] += offset_x_y
 
     # Add log-space transforms
@@ -354,9 +427,9 @@ def pred_transform_train(prediction, dim_in, anchors, class_num, CUDA, target
     if CUDA:
         anchors = anchors.cuda()
 
-    anchors = anchors.repeat(batch_size, grid_size * grid_size, 1, 1)\
+    scaled_anchors = anchors.repeat(batch_size, grid_size, grid_size, 1, 1)\
                                                      .transpose(1, 3)
-    prediction[..., 2:4] = torch.exp(prediction[..., 2:4]) * anchors
+    prediction[..., 2:4] = torch.exp(prediction[..., 2:4]) * scaled_anchors
 
     # Add sigmoid to classes possibility
     prediction[..., 5:] = torch.sigmoid(prediction[..., 5:])
@@ -384,14 +457,24 @@ def pred_transform_train(prediction, dim_in, anchors, class_num, CUDA, target
     tw = Variable(torch.FloatTensor(tw), requires_grad=False)
     th = Variable(torch.FloatTensor(th), requires_grad=False)
     tconf = Variable(torch.FloatTensor(tconf), requires_grad=False)
-    tcls = Variable(torch.FloatTensor(tcls), requires_gread=False)
+    tcls = Variable(torch.FloatTensor(tcls), requires_grad=False)
 
-    loss_x = lamda_coord*nn.BCELoss(x*mask, tx*mask)
-    loss_y = lamda_coord*nn.BCELoss(y*mask, ty*mask)
-    loss_w = lamda_coord*nn.MSELoss(w*mask, tw*mask)/2
-    loss_h = lamda_coord*nn.MSELoss(h*mask, th*mask)/2
-    loss_conf = nn.BCELoss(conf*conf_mask, tconf*conf_mask)
-    loss_cls = nn.BCELoss(pred_cls*cls_mask, tcls*cls_mask)
+    mask = mask.cuda()
+    conf_mask = conf_mask.cuda()
+    cls_mask = cls_mask.cuda()
+    tx = tx.cuda()
+    ty = ty.cuda()
+    tw = tw.cuda()
+    th = th.cuda()
+    tconf = tconf.cuda()
+    tcls = tcls.cuda()
+
+    loss_x = lamda_coord*model.bce_loss(x*mask, tx*mask)
+    loss_y = lamda_coord*model.bce_loss(y*mask, ty*mask)
+    loss_w = lamda_coord*model.mse_loss(w*mask, tw*mask)/2
+    loss_h = lamda_coord*model.mse_loss(h*mask, th*mask)/2
+    loss_conf = model.bce_loss(conf*conf_mask, tconf*conf_mask)
+    loss_cls = model.bce_loss(pred_cls*cls_mask, tcls*cls_mask)
     loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
 
     # Resize the detection map to the original image size
@@ -405,45 +488,34 @@ def pred_transform_train(prediction, dim_in, anchors, class_num, CUDA, target
     return prediction, loss, loss_x.item(), loss_y.item(), loss_w.item(),\
             loss_h.item(), loss_conf.item(), loss_cls.item(), recall
 
-def build_target(pred_boxes, target, anchors, class_num, dim, threshold):
-    '''
-        Args:
-             pred_boxes     : (tensor) predicted bounding-boxes
-             target         : (tensor) label tensor
-             anchors        : (list) coordinates and scales of anchors
-             class_num      : (int) number of classes
-             dim            : (int) height or weight dimensions
-             threshold      : (float) threshold for objectness score
-        Returns:
-             Transformed targets for loss calculation
-    '''
+def build_target(pred_boxes, target, anchors, num_anchors, num_classes,
+                                            dim, ignore_thres, img_dim):
     nB = target.size(0)
-    anchor_num = len(anchors)
+    nA = num_anchors
+    nC = num_classes
+    dim = dim
 
-    mask = torch.zeros(nB, anchor_num, dim, dim)
-    conf_mask = torch.ones(nB, anchor_num, dim, dim)
-    tx = torch.zeros(nB, anchor_num, dim, dim)
-    ty = torch.zeros(nB, anchor_num, dim, dim)
-    tw = torch.zeros(nB, anchor_num, dim, dim)
-    th = torch.zeros(nB, anchor_num, dim, dim)
-    tconf = torch.zeros(nB, anchor_num, dim, dim)
-    tcls = torch.zeros(nB, anchor_num, dim, dim, class_num)
+    mask        = torch.zeros(nB, nA, dim, dim)
+    conf_mask   = torch.ones(nB, nA, dim, dim)
+    tx          = torch.zeros(nB, nA, dim, dim)
+    ty          = torch.zeros(nB, nA, dim, dim)
+    tw          = torch.zeros(nB, nA, dim, dim)
+    th          = torch.zeros(nB, nA, dim, dim)
+    tconf       = torch.zeros(nB, nA, dim, dim)
+    tcls        = torch.zeros(nB, nA, dim, dim, num_classes)
+
     nGT = 0
-
     nCorrect = 0
     for b in range(nB):
         for t in range(target.shape[1]):
             if target[b, t].sum() == 0:
                 continue
-
             nGT += 1
-
             # Convert to position relative to box
             gx = target[b, t, 1] * dim
             gy = target[b, t, 2] * dim
             gw = target[b, t, 3] * dim
             gh = target[b, t, 4] * dim
-
             # Get grid box indices
             gi = int(gx)
             gj = int(gy)
@@ -452,14 +524,14 @@ def build_target(pred_boxes, target, anchors, class_num, dim, threshold):
             gt_box = torch.FloatTensor(np.array([0, 0, gw, gh])).unsqueeze(0)
 
             # Get shape of anchor box
-            anchor_shapes = torch.FloatTensor(np.concatenate((np.zeros((len(anchors), 2)),
-                                                              np.array(anchors)), 1))
+            anchor_shapes = torch.FloatTensor(np.concatenate((np.zeros((len(anchors),
+                                                            2)), np.array(anchors)), 1))
 
             # Calculate iou between gt and anchor shapes
             anch_ious = bbox_IOU(gt_box, anchor_shapes)
 
             # Where the overlap is larger than threshold set mask to zero (ignore)
-            conf_mask[b, anch_ious > threshold] = 0
+            conf_mask[b, anch_ious > ignore_thres] = 0
 
             # Find the best matching anchor box
             best_n = np.argmax(anch_ious)
@@ -479,14 +551,14 @@ def build_target(pred_boxes, target, anchors, class_num, dim, threshold):
             ty[b, best_n, gj, gi] = gy - gj
 
             # Width and height
-            tw[b, best_n, gj, gi] = math.log(gw / anchors[best_n][0] + 1e-16)
-            th[b, best_n, gj, gi] = math.log(gh / anchors[best_n][1] + 1e-16)
+            tw[b, best_n, gj, gi] = math.log(gw/anchors[best_n][0] + 1e-16)
+            th[b, best_n, gj, gi] = math.log(gh/anchors[best_n][1] + 1e-16)
 
             # One-hot encoding of label
             tcls[b, best_n, gj, gi, int(target[b, t, 0])] = 1
 
             # Calculate iou between ground truth and best matching prediction
-            iou = bbox_IOU(gt_box, pred_box)
+            iou = bbox_IOU(gt_box, pred_box, x1y1x2y2=False)
             tconf[b, best_n, gj, gi] = 1
 
             if iou > 0.5:
