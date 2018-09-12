@@ -51,6 +51,7 @@ def train(model, root, list_dir, epochs, batch_size, learn_rate, momentum,
     cuda = torch.cuda.is_available()
     Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
     losses = []
+    file = open("loss_recorder.txt", 'a+')
 
     # Train process
     for epoch in range(epochs):
@@ -71,17 +72,12 @@ def train(model, root, list_dir, epochs, batch_size, learn_rate, momentum,
                model.losses['x'], model.losses['y'], model.losses['w'],
                model.losses['h'], model.losses['conf'], model.losses['cls'],
                loss.item(), model.losses['recall']))
-            losses.append(loss.item())
+            print("loss: %f, recall %f"%loss.item(), model.losses['recall'], file=file)
 
         if epoch % check_point == 0:
             model.save_weight(weight_file_name)
 
     model.save_weight(weight_file_name)
-    file = open("loss_recorder.txt", 'w')
-    sys.stdout = file
-    for loss_ in losses:
-        print(" {}".format(loss_))
-
     file.close()
 
 if __name__ == '__main__':

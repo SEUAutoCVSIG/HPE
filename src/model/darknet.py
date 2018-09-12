@@ -22,6 +22,8 @@ from torch.autograd import Variable
 from src.utils import *
 import numpy as np
 import cv2
+import matplotlib.pyplot as plt
+from detect import *
 
 def get_test_input(imgfile):
     '''
@@ -393,6 +395,10 @@ class darknet(nn.Module):
 if __name__ == "__main__":
     model = darknet("D:/ShaoshuYang/HPE/cfg/yolov3.cfg")
     model.load_weight("yolov3save_test.weights")
+    test = detector(model)
+
+    img = cv2.imread("D:/ShaoshuYang/HPE/data/samples/dog.jpg")
+    test.detect_test(img, 500)
     model.save_weight("yolov3save_test.weights")
 
 

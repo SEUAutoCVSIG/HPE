@@ -26,6 +26,8 @@ from src.model.darknet import darknet
 import pickle as pkl
 import pandas as pd
 import random
+import matplotlib.pyplot as plt
+from skimage.transform import resize
 
 class detector():
     def __init__(self, model):
@@ -47,7 +49,7 @@ class detector():
                  Prediction bounding-boxes
         '''
         # Get input dimensions
-        img_h, img_w = img.shape[1], img.shape[2]
+        img_h, img_w = img.shape[0], img.shape[1]
 
         new_h = int(img_h*min(self.img_size/img_h, self.img_size/img_w))
         new_w = int(img_w*min(self.img_size/img_h, self.img_size/img_w))
@@ -60,25 +62,23 @@ class detector():
         canvas = np.full((self.img_size, self.img_size, 3), 128)
         canvas[(self.img_size - new_h)//2:(self.img_size - new_h)//2 + new_h,
                (self.img_size - new_w)//2:(self.img_size - new_w)//2 + new_w,
-                :] = img
+                :] = img_
+        canvas_ = canvas.copy()
         canvas = canvas[:, :, ::-1].transpose(2, 0, 1)
 
         # Normalization
-        canvas = torch.FloatTensor(canvas).div(255.0).unsqueeze(0)
+        canvas = torch.FloatTensor(canvas.copy()).div(255.0).unsqueeze(0)
 
         # Make prediction and transform the prediction to the original scale
         prediction = self.model(canvas)
-        prediction[:, 0] -= prediction[:, 2]/2
-        prediction[:, 1] -= prediction[:, 3]/2
-        prediction[:, 2] += prediction[:, 0]
-        prediction[:, 3] += prediction[:, 1]
+        prediction = non_max_suppression(prediction, 80)[0]
 
         prediction[:, [0, 2]] -= pad_w
         prediction[:, [1, 3]] -= pad_h
         prediction[:, [0, 2]] *= img_w/new_w
         prediction[:, [1, 3]] *= img_h/new_h
 
-        return prediction[:, :4]
+        return prediction[..., :4]
 
     def detect_test(self, img, waitkey):
         '''

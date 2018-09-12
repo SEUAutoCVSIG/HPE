@@ -125,7 +125,6 @@ class COCO(Dataset):
         canvas = canvas[:, :, ::-1].transpose((2, 0, 1))
         canvas = torch.FloatTensor(canvas.copy())
 
-
         # Label pre-processing
         label = self.ann_list[idx]["bbox"]
         for label_ in label:
