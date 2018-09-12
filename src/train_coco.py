@@ -76,6 +76,7 @@ def train(model, root, list_dir, epochs, batch_size, learn_rate, momentum,
         if epoch % check_point == 0:
             model.save_weight(weight_file_name)
 
+    model.save_weight(weight_file_name)
     file = open("loss_recorder.txt", 'w')
     sys.stdout = file
     for loss_ in losses:

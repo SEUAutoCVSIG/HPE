@@ -366,7 +366,7 @@ class darknet(nn.Module):
 
         # Iterate through layers
         for i, (module_def, module) in enumerate(zip(
-                self.module_defs[:cutoff], self.module_list[:cutoff])):
+                self.module_defs[cutoff:], self.module_list[cutoff:])):
             if module_def['type'] == 'convolutional':
 
                 conv_layer = module[0]
@@ -392,7 +392,7 @@ class darknet(nn.Module):
 
 if __name__ == "__main__":
     model = darknet("D:/ShaoshuYang/HPE/cfg/yolov3.cfg")
-    model.load_weight("D:/ShaoshuYang/HPE/yolov3.weights")
+    model.load_weight("yolov3save_test.weights")
     model.save_weight("yolov3save_test.weights")
 
 
