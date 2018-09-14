@@ -24,7 +24,7 @@ class Hourglass(nn.Module):
         super(Hourglass, self).__init__()
 
         # Upper branch definition
-        self.uppper = nn.Sequential(
+        self.upper = nn.Sequential(
             Residual(chan_in, 256),
             Residual(256, 256),
             Residual(256, chan_out),

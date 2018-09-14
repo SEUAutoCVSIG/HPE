@@ -48,5 +48,6 @@ class Residual(nn.Module):
         out = self.skip(x) + residual
         return out
 
-model = Residual(64, 64)
-print(model)
+if __name__ == '__main__':
+    model = Residual(64, 64)
+    print(model)

@@ -26,6 +26,7 @@ keys = ['index', 'person', 'imgname', 'center', 'scale', 'part', 'visible', 'nor
         'istrain']
 imgidlen = 9
 
+
 class People:
     '''
     Obj: people in the image
@@ -56,7 +57,7 @@ class DataContainer:
 
     def __init__(self, mpii, idx):
         self.idx = idx
-        self.imgname = mpii.getimgname(idx) # Just file name
+        self.imgname = mpii.getimgname(idx)  # Just file name
         self.num_pp = mpii.num_pp(idx)
         self.istrain = mpii.isTrain(idx)
         self.peoples = []
@@ -72,6 +73,7 @@ class DataContainer:
         return: (numpy.array(1,2), int)
         '''
         return self.peoples[idx_pp].getjoint(part)
+
 
 class MpiiDataset(data.Dataset):
     '''
@@ -94,15 +96,12 @@ class MpiiDataset(data.Dataset):
         obj[idx] == obj.__getitem__(idx) (e.g. obj: MpiiDataset[idx] return PIL Image type)
         '''
         try:
-            fpath = self.getfullpath(idx)
-            data = Image.open(fpath, "r")
-            if self.transforms:
-                data = self.transforms(data)
-            return data
+            PILimage = self.sqrpadding(idx)
         except:
             # If failed to load the pointed image, using a random image
             new_idx = random.randint(0, self.num_img - 1)
-            return self[new_idx]
+            PILimage = self.sqrpadding(new_idx)
+        return PILimage.resize((512, 512), Image.ANTIALIAS)
 
     def __len__(self):
         return self.num_img
@@ -148,12 +147,12 @@ class MpiiDataset(data.Dataset):
         return heatmap
 
     def heatmap(self, idx, idx_pp, part):
-        img = cv2.imread(self.containers[idx].imgname)
+        img = cv2.imread(self.getfullpath(idx))
         img = img[:, :, ::-1]  # I cannot see the difference, when I change the last argument
         height, width, _ = np.shape(img)
         [joint_x, joint_y], _ = self.containers[idx].getjoint(idx_pp, part)
         if joint_x > 0 and joint_y > 0:
-            heatmap = self.calcul_heatmap(width, height, joint_x, joint_y, 25)
+            heatmap = self.calcul_heatmap(width, height, joint_x, joint_y, 1)
             plt.imshow(heatmap)
             plt.show()
 
@@ -162,14 +161,14 @@ class MpiiDataset(data.Dataset):
         path = path.strip()
         # remove '\\' at the end (for Windows)
         path = path.rstrip('\\')
-        #remove '/' at the end (for Linux)
+        # remove '/' at the end (for Linux)
         path = path.rstrip('/')
         isExist = os.path.exists(path)
         if not isExist:
             os.makedirs(path)
 
     def __saveAugImage(self, idx, img):
-        path = self.imageFolderPath[:-len('images')]+'images_augmentation/'
+        path = self.imageFolderPath[:-len('images')] + 'images_augmentation/'
         self.__makedir(path)
         i = 0
         while True:
@@ -180,29 +179,28 @@ class MpiiDataset(data.Dataset):
         cv2.imwrite(imgpath, img)
         print('Save successfully: ', imgpath)
 
-    def rotate(self, idx, degree):
-        img = cv2.imread("/Users/midora/Desktop/Python/HPElocal/res/images/008115925.jpg")
-
+    def rotate(self, idx, degree, save=False):
+        img = cv2.imread(self.getfullpath(idx))
         height, width = img.shape[:2]
-        heightNew = int(width * fabs(sin(radians(degree))) + height * fabs(cos(radians(degree))))
-        widthNew = int(height * fabs(sin(radians(degree))) + width * fabs(cos(radians(degree))))
-
+        heightNew = int(width * abs(sin(radians(degree))) + height * abs(cos(radians(degree))))
+        widthNew = int(height * abs(sin(radians(degree))) + width * abs(cos(radians(degree))))
         matRotation = cv2.getRotationMatrix2D((width / 2, height / 2), degree, 1)
-
-        matRotation[0,2] +=(widthNew-width)/2  #重点在这步，目前不懂为什么加这步
-        matRotation[1,2] +=(heightNew-height)/2  #重点在这步
-
-        imgRotation = cv2.warpAffine(img, matRotation, (widthNew, heightNew), borderValue=(255, 255, 255))
-
-    def resize(self, idx, pixel):
-        pass
+        # I'm working on this step
+        matRotation[0, 2] += (widthNew - width) / 2
+        matRotation[1, 2] += (heightNew - height) / 2
+        img = cv2.warpAffine(img, matRotation, (widthNew, heightNew), borderValue=(128, 128, 128))
+        if save:
+            self.__saveAugImage(idx, img)
+        else:
+            cv2.imshow("imgScaling", img)
+            cv2.waitKey(0)
 
     def scale(self, idx, scaling, save=False):
         img = cv2.imread(self.getfullpath(idx))
         cv2.imshow("img", img)
-        if(scaling >= 1):
+        if (scaling >= 1):
             img = cv2.resize(img, None, fx=scaling, fy=scaling, interpolation=cv2.INTER_CUBIC)
-        elif(scaling <= 0):
+        elif (scaling <= 0):
             print('Bad Argument')
             return
         else:
@@ -212,3 +210,17 @@ class MpiiDataset(data.Dataset):
         else:
             cv2.imshow("imgScaling", img)
             cv2.waitKey(0)
+
+    def sqrpadding(self, idx):
+        img = cv2.imread(self.getfullpath(idx))
+        height, width = img.shape[:2]
+        if height == width:
+            return
+        elif height > width:
+            bar = (height -width)//2
+            img = cv2.copyMakeBorder(img, 0, 0, bar, bar, cv2.BORDER_CONSTANT, value=(128, 128, 128))
+        else:
+            bar = (width - height)//2
+            img = cv2.copyMakeBorder(img, bar, bar, 0, 0, cv2.BORDER_CONSTANT, value=(128, 128, 128))
+        PILimg = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        return PILimg
