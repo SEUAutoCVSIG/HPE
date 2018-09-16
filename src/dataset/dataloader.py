@@ -4,7 +4,7 @@
 
     Author          ：Yu Du
     Email           : 1239988498@qq.com
-    Last edit date  : Tue Sep 10 21:43 2018
+    Last edit date  :
 
 South East University Automation College, 211189 Nanjing China
 '''
@@ -18,6 +18,7 @@ import scipy.io as sio
 import scipy.misc as misc
 import h5py
 from src.dataset.mpii import Mpii
+from src.dataset.mpii
 import cv2
 import os
 from math import *
@@ -27,27 +28,9 @@ keys = ['index', 'person', 'imgname', 'center', 'scale', 'part', 'visible', 'nor
 imgidlen = 9
 
 
-class People:
-    '''
-    Obj: people in the image
-    '''
 
-    def __init__(self, mpii, idx, idx_pp):
-        self.parts = np.zeros((mpii.num_part, 2))
-        self.partname = mpii.parts
-        self.visible = -np.ones(mpii.num_part)
-        self.istrain = mpii.isTrain(idx)
-        if self.istrain:
-            self.objpos, self.scale = mpii.location(idx, idx_pp)
-            self.normalize = mpii.normalization(idx, idx_pp)
-            self.torsoangle = mpii.torsoangle(idx, idx_pp)
-            for part in range(mpii.num_part):
-                self.parts[part], self.visible[part] = mpii.partinfo(idx, idx_pp, part)
 
-    def getjoint(self, part):
-        if type(part) == type(''):
-            part = self.partname.index(part)
-        return self.parts[part], self.visible[part]
+
 
 
 class DataContainer:
@@ -60,19 +43,19 @@ class DataContainer:
         self.imgname = mpii.getimgname(idx)  # Just file name
         self.num_pp = mpii.num_pp(idx)
         self.istrain = mpii.isTrain(idx)
-        self.peoples = []
+        self.people = []
         for idx_pp in range(self.num_pp):
-            self.peoples += [People(mpii, idx, idx_pp)]
+            self.people += [Person(mpii, idx, idx_pp)]
 
     def getpeople(self, idx_pp):
-        return self.peoples[idx_pp]
+        return self.people[idx_pp]
 
     def getjoint(self, idx_pp, part):
         '''
         param part: both index of part and part name is OK
         return: (numpy.array(1,2), int)
         '''
-        return self.peoples[idx_pp].getjoint(part)
+        return self.people[idx_pp].getjoint(part)
 
 
 class MpiiDataset(data.Dataset):
@@ -101,7 +84,7 @@ class MpiiDataset(data.Dataset):
             # If failed to load the pointed image, using a random image
             new_idx = random.randint(0, self.num_img - 1)
             PILimage = self.sqrpadding(new_idx)
-        return PILimage.resize((512, 512), Image.ANTIALIAS)
+        return PILimage.resize((512, 512), Image.ANTIALIAS), idx
 
     def __len__(self):
         return self.num_img
@@ -134,25 +117,13 @@ class MpiiDataset(data.Dataset):
     def getpeople(self, idx, idx_pp):
         return self.containers[idx].getpeople(idx_pp)
 
-    def calcul_heatmap(self, img_width, img_height, c_x, c_y, sigma):
-        X1 = np.linspace(1, img_width, img_width)
-        Y1 = np.linspace(1, img_height, img_height)
-        [X, Y] = np.meshgrid(X1, Y1)
-        X = X - c_x
-        Y = Y - c_y
-        D2 = X * X + Y * Y
-        E2 = 2.0 * sigma * sigma
-        Exponent = D2 / E2
-        heatmap = np.exp(-Exponent)
-        return heatmap
-
     def heatmap(self, idx, idx_pp, part):
         img = cv2.imread(self.getfullpath(idx))
         img = img[:, :, ::-1]  # I cannot see the difference, when I change the last argument
         height, width, _ = np.shape(img)
         [joint_x, joint_y], _ = self.containers[idx].getjoint(idx_pp, part)
         if joint_x > 0 and joint_y > 0:
-            heatmap = self.calcul_heatmap(width, height, joint_x, joint_y, 1)
+            heatmap = calcul_heatmap(width, height, joint_x, joint_y, 1)
             plt.imshow(heatmap)
             plt.show()
 
@@ -197,7 +168,6 @@ class MpiiDataset(data.Dataset):
 
     def scale(self, idx, scaling, save=False):
         img = cv2.imread(self.getfullpath(idx))
-        cv2.imshow("img", img)
         if (scaling >= 1):
             img = cv2.resize(img, None, fx=scaling, fy=scaling, interpolation=cv2.INTER_CUBIC)
         elif (scaling <= 0):
@@ -214,13 +184,11 @@ class MpiiDataset(data.Dataset):
     def sqrpadding(self, idx):
         img = cv2.imread(self.getfullpath(idx))
         height, width = img.shape[:2]
-        if height == width:
-            return
-        elif height > width:
-            bar = (height -width)//2
+        if height > width:
+            bar = (height - width) // 2
             img = cv2.copyMakeBorder(img, 0, 0, bar, bar, cv2.BORDER_CONSTANT, value=(128, 128, 128))
-        else:
-            bar = (width - height)//2
+        elif height < width:
+            bar = (width - height) // 2
             img = cv2.copyMakeBorder(img, bar, bar, 0, 0, cv2.BORDER_CONSTANT, value=(128, 128, 128))
         PILimg = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
         return PILimg

@@ -82,8 +82,27 @@ import numpy as np
 # cv2.imshow("imgRotation",imgRotation)
 # cv2.waitKey(0)
 
-height = 10
-width = 59
-max = height if height > width else width
-newheight = newwidth = max
-print(newheight, newwidth)
+# height = 10
+# width = 59
+# max = height if height > width else width
+# newheight = newwidth = max
+# print(newheight, newwidth)
+
+class DataTest:
+    def __init__(self, id, address):
+        self.id = id
+        self.address = address
+        self.d = {self.id: 1,
+                  self.address: "192.168.1.1"
+                  }
+
+    def __getitem__(self, key):
+        a = key[0]
+        b = key[1]
+        c = key[2]
+        print(a, b, c)
+
+
+
+data = DataTest(1, "192.168.2.11")
+data[(1, 2, 3)]
