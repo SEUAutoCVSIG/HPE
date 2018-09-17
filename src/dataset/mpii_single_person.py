@@ -9,7 +9,6 @@
 South East University Automation College, 211189 Nanjing China
 '''
 from src.dataset.mpii import Mpii
-from src.dataset.dataloader import calcul_heatmap
 import cv2
 import random
 from torch.utils import data
@@ -125,7 +124,7 @@ class Person:
         return  : (numpy.ndarray) heatmap(16, 1024, 1024)
         '''
         heatmap = np.zeros((self.num_part, self.size, self.size))
-        for part in range(self.num_part)
+        for part in range(self.num_part):
             if self.visible[part]:
                 heatmap[part] = calcul_heatmap(self.size, self.size, self.parts[part][0], self.parts[part][1], 1)
         return heatmap
@@ -147,14 +146,14 @@ class Person:
 
 class MpiiDataSet_sig(data.Dataset):
     def __init__(self, imageFolderPath, annoPath, PIL=False):
-        super(MpiiDataset, self).__init__()
+        super(MpiiDataSet_sig, self).__init__()
         self.mpii = Mpii(imageFolderPath, annoPath)
         self.num_person = 0
         self.containers = []  # dtype: Person
         self.imageFolderPath = imageFolderPath
         self.PIL = PIL
         for imgidx in range(self.mpii.num_img):
-            for idx_pp in range(self.mpii.num_pp(idx)):
+            for idx_pp in range(self.mpii.num_pp(imgidx)):
                 self.add_person(imgidx, idx_pp)
 
     def __getitem__(self, idx):

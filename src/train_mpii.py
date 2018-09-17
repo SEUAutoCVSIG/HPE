@@ -105,3 +105,4 @@ if __name__ == '__main__':
 
     train(model, FolderPath, Annotation, epochs=100, batch_size=64, learn_rate=0.001, momentum=0.9, decay=0.0005,
           check_point=5, weight_file_name="stacked_hourglass.pkl")
+
