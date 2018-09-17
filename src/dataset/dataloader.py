@@ -18,7 +18,7 @@ import scipy.io as sio
 import scipy.misc as misc
 import h5py
 from src.dataset.mpii import Mpii
-from src.dataset.mpii_single_person import Person, calcul_heatmap
+from src.dataset.mpiiLoader import Person, calcul_heatmap
 import cv2
 import os
 from math import *

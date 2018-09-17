@@ -14,6 +14,7 @@ import random
 from torch.utils import data
 from PIL import Image
 import numpy as np
+import torch
 from torchvision import transforms as T
 import matplotlib.pyplot as plt
 import scipy.io as sio
@@ -177,6 +178,8 @@ class MpiiDataSet_sig(data.Dataset):
             PILimg = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
             return PILimg, heatmap
         else:
+            img = torch.from_numpy(img)/255
+            heatmap = torch.from_numpy(heatmap).repeat(2, 1, 1)
             return img, heatmap
 
     def __len__(self):

@@ -11,7 +11,7 @@ South East University Automation College, 211189 Nanjing China
 
 from src.model.hourglass import StackedHourglass
 from src.dataset.dataloader import MpiiDataset
-from src.dataset.mpii_single_person import MpiiDataSet_sig
+from src.dataset.mpiiLoader import MpiiDataSet_sig
 import torch
 import torch.nn as nn
 import numpy as np
@@ -33,9 +33,7 @@ You need to change the following parameters according to your own condition.
 # My local path
 FolderPath = '/Users/midora/Desktop/Python/HPElocal/res/images'
 Annotation = '/Users/midora/Desktop/Python/HPEOnline/res/mpii_human_pose_v1_u12_1.mat'
-transforms = T.Compose([
-    T.ToTensor()
-])
+
 '''********************************************************************'''
 
 
@@ -58,8 +56,8 @@ def train(model, FolderPath, Annotation, epochs, batch_size, learn_rate, momentu
              Output training status and save weight
     '''
     # Define data loader
-    data_loader = DataLoader(MpiiDataSet_sig(FolderPath, Annotation), batch_size=
-    batch_size, shuffle=True)
+    data_loader = DataLoader(MpiiDataSet_sig(FolderPath, Annotation),
+                             batch_size=batch_size, shuffle=True)
 
     # Define optimizer
     optimizer = optim.SGD(model.parameters(), lr=learn_rate, momentum=momentum,
@@ -74,11 +72,11 @@ def train(model, FolderPath, Annotation, epochs, batch_size, learn_rate, momentu
     # Train process
     for epoch in range(epochs):
         for i, (data, heatmap) in enumerate(data_loader):
-            data = torch.from_numpy(data)
-            heatmap = torch.from_numpy(heatmap)
+            data = Variable(data.type(Tensor))
+            heatmap = Variable(data.type(Tensor), requires_grad=False)
             optimizer.zero_grad()
             out = model(data)
-            loss = loss_func(out.float, heatmap.float)
+            loss = loss_func(out, heatmap)
             loss.backward()
             optimizer.step()
 
