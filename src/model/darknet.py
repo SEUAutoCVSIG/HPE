@@ -23,7 +23,6 @@ from src.utils import *
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from detect import *
 
 def get_test_input(imgfile):
     '''
@@ -172,8 +171,8 @@ class YOLOLayer(nn.Module):
             # Mask outputs to ignore non-existing objects
             loss_x = self.lambda_coord * self.bce_loss(x * mask, tx * mask)
             loss_y = self.lambda_coord * self.bce_loss(y * mask, ty * mask)
-            loss_w = self.lambda_coord * self.mse_loss(w * mask, tw * mask) / 2
-            loss_h = self.lambda_coord * self.mse_loss(h * mask, th * mask) / 2
+            loss_w = self.lambda_coord * self.mse_loss(w * mask, tw * mask)/2
+            loss_h = self.lambda_coord * self.mse_loss(h * mask, th * mask)/2
             loss_conf = self.bce_loss(conf * conf_mask, tconf * conf_mask)
             loss_cls = self.bce_loss(pred_cls * cls_mask, tcls * cls_mask)
             loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
@@ -251,7 +250,7 @@ def create_modules(module_defs):
 class darknet(nn.Module):
     """YOLOv3 object detection model"""
 
-    def __init__(self, config_path, img_size=416):
+    def __init__(self, config_path, class_num, img_size=416):
         '''
             Args:
                  config_path      : (string) directory to the cfg file
@@ -260,6 +259,7 @@ class darknet(nn.Module):
         super(darknet, self).__init__()
         self.module_defs = parse_model_config(config_path)
         self.hyperparams, self.module_list = create_modules(self.module_defs)
+        self.class_num = class_num
         self.img_size = img_size
         self.seen = 0
         self.header_info = np.array([0, 0, 0, self.seen, 0])
@@ -354,7 +354,7 @@ class darknet(nn.Module):
                 conv_layer.weight.data.copy_(conv_w)
                 ptr += num_w
 
-    def save_weight(self, filename, cutoff=0):
+    def save_weight(self, filename):
         '''
             Args:
                  dir          : (string) directory of the destination
@@ -368,7 +368,7 @@ class darknet(nn.Module):
 
         # Iterate through layers
         for i, (module_def, module) in enumerate(zip(
-                self.module_defs[cutoff:], self.module_list[cutoff:])):
+                self.module_defs, self.module_list)):
             if module_def['type'] == 'convolutional':
 
                 conv_layer = module[0]
@@ -392,14 +392,6 @@ class darknet(nn.Module):
 
         fp.close()
 
-if __name__ == "__main__":
-    model = darknet("D:/ShaoshuYang/HPE/cfg/yolov3.cfg")
-    model.load_weight("yolov3save_test.weights")
-    test = detector(model)
-
-    img = cv2.imread("D:/ShaoshuYang/HPE/data/samples/dog.jpg")
-    test.detect_test(img, 500)
-    model.save_weight("yolov3save_test.weights")
 
 
 

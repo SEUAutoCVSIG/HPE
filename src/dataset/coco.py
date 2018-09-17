@@ -10,6 +10,7 @@ South East University Automation College, 211189 Nanjing China
 '''
 
 import glob
+import copy
 import random
 import os
 import cv2
@@ -91,7 +92,7 @@ class COCO(Dataset):
                 self.ann_list.append(ann_list)
                 last_img = name
 
-        self.ann_list = self.ann_list[:64000]
+        self.ann_list = self.ann_list[:64008]
 
     def __getitem__(self, idx):
         '''
@@ -103,7 +104,6 @@ class COCO(Dataset):
         # Read image
         img = np.array(cv2.imread(self.root + "train/" + self.ann_list[idx]["name"]),
                                                                         dtype=float)
-        img /= 255.0
         img_h, img_w = img.shape[0], img.shape[1]
 
         new_w = img_w * min(self.img_size / img_h, self.img_size / img_w)
@@ -123,10 +123,10 @@ class COCO(Dataset):
 
         # Transform BGR to RGB, HWC to CHW
         canvas = canvas[:, :, ::-1].transpose((2, 0, 1))
-        canvas = torch.FloatTensor(canvas.copy())
+        canvas = torch.FloatTensor(canvas.copy()).div(255.0)
 
         # Label pre-processing
-        label = self.ann_list[idx]["bbox"]
+        label = copy.deepcopy(self.ann_list[idx]["bbox"])
         for label_ in label:
             label_.append(0)
             label_[1:] = label_[0:4]
@@ -218,7 +218,7 @@ def draw_rect(bbox, img):
 
 if __name__ == '__main__':
     coco = COCO("D:/ShaoshuYang/COCO/", "coco_anno.txt")
-    coco.show_dataset()
+    img, label = coco[1]
 
 
 
