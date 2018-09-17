@@ -21,6 +21,7 @@ from torchvision import datasets
 from torchvision import transforms
 from torch.autograd import Variable
 import torch.optim as optim
+from detect import *
 
 def train(model, root, list_dir, epochs, batch_size, learn_rate, momentum,
                                      decay, check_point, weight_file_name):
@@ -72,7 +73,7 @@ def train(model, root, list_dir, epochs, batch_size, learn_rate, momentum,
                model.losses['x'], model.losses['y'], model.losses['w'],
                model.losses['h'], model.losses['conf'], model.losses['cls'],
                loss.item(), model.losses['recall']))
-            print("loss: %f, recall %f"%loss.item(), model.losses['recall'], file=file)
+            file.write("loss: %f, recall: %f\n"%(loss.item(), model.losses['recall']))
 
         if epoch % check_point == 0:
             model.save_weight(weight_file_name)
@@ -81,12 +82,12 @@ def train(model, root, list_dir, epochs, batch_size, learn_rate, momentum,
     file.close()
 
 if __name__ == '__main__':
-    model = darknet("D:/ShaoshuYang/HPE/cfg/yolov3-1.cfg")
+    model = darknet("D:/ShaoshuYang/HPE/cfg/yolov3-1.cfg", 1)
 
     if torch.cuda.is_available():
         model.cuda()
 
     model.train()
 
-    train(model, "D:/ShaoshuYang/COCO/", "coco_anno.txt", 30, 16, 0.001, 0.9, 0.0005, 5,
+    train(model, "D:/ShaoshuYang/COCO/", "coco_anno.txt", 30, 12, 0.001, 0.9, 0.0005, 1,
           "yolov3-1.weights")

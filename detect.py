@@ -22,6 +22,7 @@ from src.utils import *
 import argparse
 import os
 import os.path
+import torch
 from src.model.darknet import darknet
 import pickle as pkl
 import pandas as pd
@@ -68,10 +69,12 @@ class detector():
 
         # Normalization
         canvas = torch.FloatTensor(canvas.copy()).div(255.0).unsqueeze(0)
+        if torch.cuda.is_available():
+            canvas = canvas.cuda()
 
         # Make prediction and transform the prediction to the original scale
         prediction = self.model(canvas)
-        prediction = non_max_suppression(prediction, 80)[0]
+        prediction = non_max_suppression(prediction, self.model.class_num)[0]
 
         prediction[:, [0, 2]] -= pad_w
         prediction[:, [1, 3]] -= pad_h
@@ -92,6 +95,7 @@ class detector():
                          Prediction bounding-boxes
                 '''
         # Get input dimensions
+        # try:
         prediction = self.detect(img)
 
         for prediction_ in prediction:
@@ -99,5 +103,15 @@ class detector():
             coord2 = tuple(map(int, prediction_[2:4]))
             cv2.rectangle(img, coord1, coord2, (0, 255, 0), 2)
 
+        #finally:
         cv2.imshow('prediction.jpg', img)
         cv2.waitKey(waitkey)
+
+if __name__ == "__main__":
+    model = darknet("D:/ShaoshuYang/HPE/cfg/yolov3-1.cfg", 80)
+    model.load_weight("src/yolov3-1.weights")
+    model.cuda()
+    test = detector(model)
+
+    img = cv2.imread("D:/ShaoshuYang/HPE/data/samples/000000000049.jpg")
+    test.detect_test(img, 100000)
