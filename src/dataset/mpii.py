@@ -22,7 +22,7 @@ class Mpii:
     '''
 
     def __init__(self, imageFolderPath, annoPath):
-        self.imageFolderPath = imageFolderPath + '/'
+        self.imageFolderPath = imageFolderPath
         # Load in annotation
         self.anno = sio.loadmat(annoPath)['RELEASE']
         self.num_img = self.anno['img_train'][0][0][0].shape[0]
@@ -34,8 +34,12 @@ class Mpii:
                       'lsho', 'lelb', 'lwri']
         self.num_part = len(self.parts)
 
-    def getname(self, idx):
-        return self.imageFolderPath + str(self.anno['annolist'][0][0][0]['image'][idx][0]['name'][0][0])
+    def getfullpath(self, idx):
+        return self.imageFolderPath + '/' + str(self.anno['annolist'][0][0][0]['image'][idx][0]['name'][0][0])
+
+    def getimgname(self, idx):
+        return str(self.anno['annolist'][0][0][0]['image'][idx][0]['name'][0][0])
+
 
     def isTrain(self, idx):
         '''
