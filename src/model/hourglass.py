@@ -69,7 +69,7 @@ class StackedHourglass(nn.Module):
         super(StackedHourglass, self).__init__()
 
         # Initial processing of th image
-        self.conv1 = nn.Conv2d(3, 64, 7, stride=2, padding=3)
+        self.conv1 = nn.Conv2d(3, 64, 7, padding=3)
         self.bn1 = nn.BatchNorm2d(64)
         self.ReLU1 = nn.ReLU(inplace=True)
         self.r1 = Residual(64, 128)
