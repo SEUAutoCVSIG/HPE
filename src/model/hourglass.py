@@ -4,13 +4,16 @@
 
     Author           : Shaoshu Yang
     Email            : 13558615057@163.com
-    Last edit date   : Sept 2 23:46 2018
+    Last edit date   :
 
 South East University Automation College, 211189 Nanjing China
 '''
 
 from src.model.residual import Residual
+import torch.nn.functional as F
 import torch.nn as nn
+import torch
+import numpy as np
 
 # Definition of hourglass module
 class Hourglass(nn.Module):
@@ -117,7 +120,6 @@ class StackedHourglass(nn.Module):
 
     # Override the forward method
     def forward(self, x):
-        out = []
 
         x = self.conv1(x)
         x = self.bn1(x)
@@ -135,22 +137,22 @@ class StackedHourglass(nn.Module):
         out1 = self.out1(lv1)
 
         # Append output level1
-        out.append(out1)
-        out1 = self.out1_(out1)
+
+        out1_ = self.out1_(out1)
 
         # Joint of pool1 & l2
-        lv2 = []
-        lv2.append(x)
-        lv2.append(lv1)
+        lv2 = torch.cat((x, lv1), 1)
+        # lv2.append(x)
+        # lv2.append(lv1)
 
         # Forward pass on level2
         lv2 = self.cat1(lv2)
-        lv2 = lv2 + out1
+        lv2 = lv2 + out1_
         lv2 = self.hg2(lv2)
         lv2 = self.l3(lv2)
         lv2 = self.l4(lv2)
-
+        lv2 = self.out2(lv2)
         # Append output level2
-        out.append(self.out2(lv2))
+        out = torch.cat((out1, lv2), 1)
 
         return out

@@ -4,7 +4,7 @@
 
     Author          ：Yu Du
     Email           : 1239988498@qq.com
-    Last edit date  :Mon Sep 16 23:55 2018
+    Last edit date  : Tue Sep 17 01:05 2018
 
 South East University Automation College, 211189 Nanjing China
 '''
@@ -15,68 +15,7 @@ from torch.utils import data
 from PIL import Image
 import numpy as np
 import torch
-from torchvision import transforms as T
-import matplotlib.pyplot as plt
-import scipy.io as sio
-import scipy.misc as misc
-import os
-from math import *
 
-
-# class DataContainer_sig():
-#     '''
-#     As a container to store information of the image with one person, one joint by cropping
-#     '''
-#
-#     def __init__(self, mpii, imgidx, coor1, coor2, idx_pp, part):
-#         '''
-#         Args:
-#             mpii    : class Mpii
-#             imgidx  : integer (index of image annotation got from .mat file)
-#             coor1   : coordinate of the top left corner of the bounding box
-#             coor2   : coordinate of the lower right corner of the bounding box
-#             idx_pp  : index for people in this image
-#             part    : both index of part and part name is OK
-#         '''
-#         self.imgidx = imgidx
-#         self.imgname = mpii.getfullpath(imgidx)  # Full Name
-#         self.istrain = mpii.isTrain(imgidx)
-#         ori_partcoor, self.isvisible = mpii.partinfo(imgidx, idx_pp, part)
-#         self.partcoor = (ori_partcoor[0] - coor1[0], ori_partcoor[1] - coor1[1])
-#         self.coor1 = coor1
-#         self.coor2 = coor2
-#         self.width = coor2[0] - coor1[0]
-#         self.height = coor2[1] - coor1[1]
-#
-#     def gen_heatmap(self):
-#         '''
-#         return  : (numpy.ndarray) heatmap
-#         '''
-#         self.partcoor[0] *= 512 / self.width
-#         self.partcoor[1] *= 512 / self.height
-#         if self.partcoor[0] > 0 and self.partcoor[1] > 0:
-#             return calcul_heatmap(512, 512, self.partcoor[0], self.partcoor[1], 1)
-#
-#     def sqrpadding(self):
-#         '''
-#         return  : (numpy.ndarray) image open with cv2 then padded to square in gray(128)
-#         '''
-#         img = cv2.imread(self.imgname)
-#         (x1, y1) = self.coor1
-#         (x2, y2) = self.coor2
-#         img = img[y1:y2, x1:x2]
-#         height, width = img.shape[:2]
-#         max = height if height > width else width
-#         if height > width:
-#             bar = (height - width) // 2
-#             img = cv2.copyMakeBorder(img, 0, 0, bar, bar, cv2.BORDER_CONSTANT, value=(128, 128, 128))
-#             self.partcoor[0] += bar
-#         elif height < width:
-#             bar = (width - height) // 2
-#             img = cv2.copyMakeBorder(img, bar, bar, 0, 0, cv2.BORDER_CONSTANT, value=(128, 128, 128))
-#             self.partcoor[1] += bar
-#         self.height = self.width = max
-#         return img
 
 
 def calcul_heatmap(img_width, img_height, c_x, c_y, sigma):
@@ -111,7 +50,6 @@ class Person:
             for part in range(mpii.num_part):
                 self.parts[part], self.visible[part] = mpii.partinfo(idx, idx_pp, part)
             halfside = int(self.scale * 105)
-            self.size = self.side = 2 * halfside
             self.coor1 = (self.objpos[0] - halfside, self.objpos[1] - halfside)
             self.coor2 = (self.objpos[0] + halfside, self.objpos[1] + halfside)
 
@@ -122,12 +60,12 @@ class Person:
 
     def gen_heatmap(self):
         '''
-        return  : (numpy.ndarray) heatmap(16, 1024, 1024)
+        return  : (numpy.ndarray) heatmap(16, 64, 64)
         '''
-        heatmap = np.zeros((self.num_part, self.size, self.size))
+        heatmap = np.zeros((self.num_part, 128, 128))
         for part in range(self.num_part):
             if self.visible[part]:
-                heatmap[part] = calcul_heatmap(self.size, self.size, self.parts[part][0], self.parts[part][1], 1)
+                heatmap[part] = calcul_heatmap(128, 128, self.parts[part][0]/2, self.parts[part][1]/2, 1)
         return heatmap
 
     def sqrpadding(self):
@@ -135,13 +73,32 @@ class Person:
         return  : (numpy.ndarray) image open with cv2 then padded to square in gray(128)
         '''
         img = cv2.imread(self.imgname)
+        height, width = img.shape[:2]
         (x1, y1) = self.coor1
         (x2, y2) = self.coor2
-        img = img[y1:y2, x1:x2]
-        self.size = 1024
-        bar = (self.size - self.side) / 2
-        img = cv2.copyMakeBorder(img, bar, bar, bar, bar, cv2.BORDER_CONSTANT, value=(128, 128, 128))
-        self.parts += bar
+        img = img[max(y1, 0):min(y2, height), max(x1, 0):min(x2, width)]
+        new_height, new_width = img.shape[:2]
+        max_ = max(new_width, new_height)
+        if new_height > new_width:
+            bar = (new_height - new_width) // 2
+            img = cv2.copyMakeBorder(img, 0, 0, bar, bar, cv2.BORDER_CONSTANT, value=(128, 128, 128))
+            self.parts[:, 0] += bar
+        elif new_height < new_width:
+            bar = (new_width - new_height) // 2
+            img = cv2.copyMakeBorder(img, bar, bar, 0, 0, cv2.BORDER_CONSTANT, value=(128, 128, 128))
+            self.parts[:, 1] += bar
+        if max_ > 256:
+            img = cv2.resize(img, (256, 256), interpolation=cv2.INTER_AREA)
+        else:
+            img = cv2.resize(img, (256, 256), interpolation=cv2.INTER_CUBIC)
+        # self.size = 1280
+        # top = (self.size - new_height) // 2
+        # left = (self.size - new_width) // 2
+        # bottom = self.size - new_height - top
+        # right = self.size - new_width - left
+        # img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(128, 128, 128))
+        self.parts = self.parts*256//max_
+        print(img.shape)
         return img
 
 
@@ -155,7 +112,8 @@ class MpiiDataSet_sig(data.Dataset):
         self.PIL = PIL
         for imgidx in range(self.mpii.num_img):
             for idx_pp in range(self.mpii.num_pp(imgidx)):
-                self.add_person(imgidx, idx_pp)
+                if self.mpii.isTrain(imgidx):
+                    self.add_person(imgidx, idx_pp)
 
     def __getitem__(self, idx):
         '''
@@ -178,6 +136,7 @@ class MpiiDataSet_sig(data.Dataset):
             PILimg = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
             return PILimg, heatmap
         else:
+            img = img.swapaxes(1, 2).swapaxes(0, 1)
             img = torch.from_numpy(img)/255
             heatmap = torch.from_numpy(heatmap).repeat(2, 1, 1)
             return img, heatmap
