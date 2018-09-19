@@ -64,7 +64,7 @@ class Person:
         '''
         heatmap = np.zeros((self.num_part, 128, 128))
         for part in range(self.num_part):
-            if self.visible[part]:
+            if not(self.visible[part] == 0 or self.visible[part] == -1):
                 heatmap[part] = calcul_heatmap(128, 128, self.parts[part][0]/2, self.parts[part][1]/2, 1)
         return heatmap
 
@@ -77,16 +77,22 @@ class Person:
         (x1, y1) = self.coor1
         (x2, y2) = self.coor2
         img = img[max(y1, 0):min(y2, height), max(x1, 0):min(x2, width)]
+        if x1 > 0:
+            self.parts[:, 0] -= x1
+        if y1 > 0:
+            self.parts[:, 1] -= y1
         new_height, new_width = img.shape[:2]
         max_ = max(new_width, new_height)
         if new_height > new_width:
-            bar = (new_height - new_width) // 2
-            img = cv2.copyMakeBorder(img, 0, 0, bar, bar, cv2.BORDER_CONSTANT, value=(128, 128, 128))
-            self.parts[:, 0] += bar
+            left = (new_height - new_width) // 2
+            right = new_height - new_height - left
+            img = cv2.copyMakeBorder(img, 0, 0, left, right, cv2.BORDER_CONSTANT, value=(128, 128, 128))
+            self.parts[:, 0] += left
         elif new_height < new_width:
-            bar = (new_width - new_height) // 2
-            img = cv2.copyMakeBorder(img, bar, bar, 0, 0, cv2.BORDER_CONSTANT, value=(128, 128, 128))
-            self.parts[:, 1] += bar
+            top = (new_width - new_height) // 2
+            bottom = new_width - new_height - top
+            img = cv2.copyMakeBorder(img, top, bottom, 0, 0, cv2.BORDER_CONSTANT, value=(128, 128, 128))
+            self.parts[:, 1] += top
         if max_ > 256:
             img = cv2.resize(img, (256, 256), interpolation=cv2.INTER_AREA)
         else:
@@ -97,8 +103,7 @@ class Person:
         # bottom = self.size - new_height - top
         # right = self.size - new_width - left
         # img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(128, 128, 128))
-        self.parts = self.parts*256//max_
-        print(img.shape)
+        self.parts = self.parts*256/max_
         return img
 
 
@@ -110,7 +115,8 @@ class MpiiDataSet_sig(data.Dataset):
         self.containers = []  # dtype: Person
         self.imageFolderPath = imageFolderPath
         self.PIL = PIL
-        for imgidx in range(self.mpii.num_img):
+        # for imgidx in range(self.mpii.num_img):
+        for imgidx in range(35):
             for idx_pp in range(self.mpii.num_pp(imgidx)):
                 if self.mpii.isTrain(imgidx):
                     self.add_person(imgidx, idx_pp)
@@ -137,7 +143,7 @@ class MpiiDataSet_sig(data.Dataset):
             return PILimg, heatmap
         else:
             img = img.swapaxes(1, 2).swapaxes(0, 1)
-            img = torch.from_numpy(img)/255
+            img = torch.from_numpy(img).float()/255
             heatmap = torch.from_numpy(heatmap).repeat(2, 1, 1)
             return img, heatmap
 

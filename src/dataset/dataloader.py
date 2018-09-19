@@ -28,11 +28,6 @@ keys = ['index', 'person', 'imgname', 'center', 'scale', 'part', 'visible', 'nor
 imgidlen = 9
 
 
-
-
-
-
-
 class DataContainer:
     '''
     As a container to store information of one image
