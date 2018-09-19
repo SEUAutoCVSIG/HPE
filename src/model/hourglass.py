@@ -136,7 +136,7 @@ class StackedHourglass(nn.Module):
 
         # Append output level1
         out.append(out1)
-        out1 = self.out1_(out1)
+        out1_ = self.out1_(out1)
 
         # Joint of pool1 & l2
         lv2 = []
@@ -145,7 +145,7 @@ class StackedHourglass(nn.Module):
 
         # Forward pass on level2
         lv2 = self.cat1(lv2)
-        lv2 = lv2 + out1
+        lv2 = lv2 + out1_
         lv2 = self.hg2(lv2)
         lv2 = self.l3(lv2)
         lv2 = self.l4(lv2)

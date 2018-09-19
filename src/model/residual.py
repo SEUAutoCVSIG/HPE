@@ -29,7 +29,7 @@ class Residual(nn.Module):
             nn.BatchNorm2d(chan_out//2),
             nn.ReLU(inplace=True),
             nn.Conv2d(chan_out//2, chan_out//2, 3, stride=1,
-                                            padding=(1, 1)),
+                                            padding=1),
             nn.BatchNorm2d(chan_out//2),
             nn.ReLU(inplace=True),
             nn.Conv2d(chan_out//2, chan_out, 1, stride=1),

@@ -31,8 +31,8 @@ import os
 You need to change the following parameters according to your own condition.
 '''
 # My local path
-FolderPath = '/Users/midora/Desktop/Python/HPElocal/res/images'
-Annotation = '/Users/midora/Desktop/Python/HPEOnline/res/mpii_human_pose_v1_u12_1.mat'
+FolderPath = 'D:/ShaoshuYang/MPII/images'
+Annotation = 'D:/ShaoshuYang/HPE/res/mpii_human_pose_v1_u12_1.mat'
 
 '''********************************************************************'''
 
@@ -101,6 +101,6 @@ if __name__ == '__main__':
 
     model.train()
 
-    train(model, FolderPath, Annotation, epochs=100, batch_size=64, learn_rate=0.001, momentum=0.9, decay=0.0005,
+    train(model, FolderPath, Annotation, epochs=100, batch_size=1, learn_rate=0.001, momentum=0.9, decay=0.0005,
           check_point=5, weight_file_name="stacked_hourglass.pkl")
 

@@ -25,7 +25,7 @@ from torch.autograd import Variable
 import numpy as np
 import cv2
 
-def non_max_suppression(prediction, num_classes, conf_thres=0.9, nms_thres=0.4):
+def non_max_suppression(prediction, num_classes, conf_thres=0.5, nms_thres=0.4):
     """
     Removes detections with lower object confidence score than 'conf_thres' and performs
     Non-Maximum Suppression to further filter detections.
@@ -496,7 +496,7 @@ def build_target(pred_boxes, target, anchors, num_anchors, num_classes,
     dim = dim
 
     mask        = torch.zeros(nB, nA, dim, dim)
-    conf_mask   = torch.zeros(nB, nA, dim, dim)
+    conf_mask   = torch.ones(nB, nA, dim, dim)
     tx          = torch.zeros(nB, nA, dim, dim)
     ty          = torch.zeros(nB, nA, dim, dim)
     tw          = torch.zeros(nB, nA, dim, dim)

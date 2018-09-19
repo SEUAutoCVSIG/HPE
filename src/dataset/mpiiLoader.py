@@ -139,7 +139,7 @@ class Person:
         (x2, y2) = self.coor2
         img = img[y1:y2, x1:x2]
         self.size = 1024
-        bar = (self.size - self.side) / 2
+        bar = (self.size - self.side) // 2
         img = cv2.copyMakeBorder(img, bar, bar, bar, bar, cv2.BORDER_CONSTANT, value=(128, 128, 128))
         self.parts += bar
         return img

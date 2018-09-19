@@ -92,7 +92,7 @@ class COCO(Dataset):
                 self.ann_list.append(ann_list)
                 last_img = name
 
-        self.ann_list = self.ann_list[:64008]
+        self.ann_list = self.ann_list[:64000]
 
     def __getitem__(self, idx):
         '''
