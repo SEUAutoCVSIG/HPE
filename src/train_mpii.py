@@ -122,4 +122,4 @@ if __name__ == '__main__':
     model.train()
 
     train(model, FolderPath, Annotation, epochs=100, batch_size=1, learn_rate=2.5e-4, momentum=0.9, decay=0.0005,
-          check_point=5, weight_file_name=weight_file_name)
+          check_point=1, weight_file_name=weight_file_name)
