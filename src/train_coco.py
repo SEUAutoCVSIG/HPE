@@ -90,5 +90,5 @@ if __name__ == '__main__':
 
     model.train()
 
-    train(model, "D:/ShaoshuYang/COCO/", "coco_anno.txt", 30, 8, 0.001, 0.9, 0.0005, 1,
+    train(model, "D:/ShaoshuYang/COCO/", "coco_anno.txt", 30, 6, 0.001, 0.9, 0.0005, 1,
           "yolov3-1-1.weights")

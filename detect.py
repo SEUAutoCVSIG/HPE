@@ -75,7 +75,7 @@ class detector():
         # Make prediction and transform the prediction to the original scale
         prediction = self.model(canvas)
         prediction = non_max_suppression(prediction, self.model.class_num,
-                                         conf_thres=0.2)[0]
+                                         conf_thres=0.5)[0]
 
         prediction[:, [0, 2]] -= pad_w
         prediction[:, [1, 3]] -= pad_h
@@ -114,5 +114,5 @@ if __name__ == "__main__":
     model.cuda()
     test = detector(model)
 
-    img = cv2.imread("D:/ShaoshuYang/HPE/data/samples/000000017308.jpg")
+    img = cv2.imread("D:/ShaoshuYang/HPE/data/samples/sishui.jpg")
     test.detect_test(img, 100000)
