@@ -108,6 +108,7 @@ class detector():
         cv2.imshow('prediction.jpg', img)
         cv2.waitKey(waitkey)
 
+
 if __name__ == "__main__":
     model = darknet("D:/ShaoshuYang/HPE/cfg/yolov3-1.cfg", 80)
     model.load_weight("src/yolov3-1-1.weights")
