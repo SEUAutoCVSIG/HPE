@@ -83,11 +83,12 @@ def train(model, root, list_dir, epochs, batch_size, learn_rate, momentum,
 
 if __name__ == '__main__':
     model = darknet("D:/ShaoshuYang/HPE/cfg/yolov3-1.cfg", 1)
+    model.load_weight("D:/ShaoshuYang/HPE/src/yolov3-1-1.weights")
 
     if torch.cuda.is_available():
         model.cuda()
 
     model.train()
 
-    train(model, "D:/ShaoshuYang/COCO/", "coco_anno.txt", 30, 12, 0.001, 0.9, 0.0005, 1,
-          "yolov3-1.weights")
+    train(model, "D:/ShaoshuYang/COCO/", "coco_anno.txt", 30, 6, 0.001, 0.9, 0.0005, 1,
+          "yolov3-1-1.weights")
