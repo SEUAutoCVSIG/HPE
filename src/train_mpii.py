@@ -31,8 +31,9 @@ import os
 You need to change the following parameters according to your own condition.
 '''
 # My local path
-FolderPath = 'D:/ShaoshuYang/MPII/images'
-Annotation = 'D:/ShaoshuYang/HPE/res/mpii_human_pose_v1_u12_1.mat'
+FolderPath = '/Users/midora/Desktop/Python/HPElocal/res/images'
+Annotation = '/Users/midora/Desktop/Python/HPEOnline/res/mpii_human_pose_v1_u12_1.mat'
+WeightPath = '/Users/midora/Desktop/Python/HPEOnline/data/'
 
 '''********************************************************************'''
 
@@ -64,43 +65,61 @@ def train(model, FolderPath, Annotation, epochs, batch_size, learn_rate, momentu
                           weight_decay=decay)
 
     # Loss Function
-    loss_func = nn.MSELoss(size_average=False, reduce=False)
+    loss_func = nn.MSELoss()
 
     cuda = torch.cuda.is_available()
     Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+    parts = ['rank', 'rkne', 'rhip',
+             'lhip', 'lkne', 'lank',
+             'pelv', 'thrx', 'neck', 'head',
+             'rwri', 'relb', 'rsho',
+             'lsho', 'lelb', 'lwri']
 
     # Train process
     for epoch in range(epochs):
-        for i, (data, heatmap) in enumerate(data_loader):
+        for i, (data, target) in enumerate(data_loader):
+            # print(data)
+            # print(target)
+            # print('data = ', data.shape)
+            # print('target = ', target.shape)
             data = Variable(data.type(Tensor))
-            heatmap = Variable(data.type(Tensor), requires_grad=False)
+            target = Variable(target.type(Tensor), requires_grad=False)
             optimizer.zero_grad()
-            out = model(data)
-            loss = loss_func(out, heatmap)
+            output = model(data)
+            # print(output)
+            # print('output = ', output.shape)
+            # print('target = ', target.shape)
+            loss = loss_func(output, target)
+            # print(loss)
+            # print(type(loss))
             loss.backward()
             optimizer.step()
 
-        # Output train info
-        print('[Epoch %d/%d, Batch %d/%d] [Losses: x %f, y %f, w %f, h %f, conf %f, \
-                                                    cls %f, total %f, recall: %.5f]' %
-              (epoch, epochs, batch_size, len(data_loader),
-               model.losses['loss_x'], model.losses['loss_y'], model.losses['loss_w'],
-               model.losses['loss_h'], model.losses['loss_conf'], model.losses['loss_cls'],
-               loss.item(), model.losses['recall']))
+            # Output train info
+            print('[Epoch %d/%d, Batch %d/%d] [Loss: ' % (epoch+1, epochs, i+1, len(data_loader)), end='')
+            for part in range(len(parts)):
+                part_target = torch.cat((target[:, part, :, :], target[:, part + 16, :, :]), 1)
+                part_output = torch.cat((output[:, part, :, :], output[:, part + 16, :, :]), 1)
+                loss_ = loss_func(part_output, part_target)
+                print('%s %f ' % (parts[part], loss_), end='')
+            print('total %f]' % loss)
 
         if epoch % check_point == 0:
-            torch.save(model, weight_file_name)
+            torch.save(model.state_dict(), weight_file_name)
+
+
 
 
 if __name__ == '__main__':
+    weight_file_name = WeightPath+"stacked_hourglass.pkl"
     # Model
-    model = StackedHourglass(64)
-
+    model = StackedHourglass(16)
+    if os.path.isfile(weight_file_name):
+        model.load_state_dict(torch.load(weight_file_name))
     if torch.cuda.is_available():
         model.cuda()
 
     model.train()
 
-    train(model, FolderPath, Annotation, epochs=100, batch_size=1, learn_rate=0.001, momentum=0.9, decay=0.0005,
-          check_point=5, weight_file_name="stacked_hourglass.pkl")
-
+    train(model, FolderPath, Annotation, epochs=100, batch_size=1, learn_rate=2.5e-4, momentum=0.9, decay=0.0005,
+          check_point=1, weight_file_name=weight_file_name)
