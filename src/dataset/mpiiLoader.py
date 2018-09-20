@@ -115,11 +115,15 @@ class MpiiDataSet_sig(data.Dataset):
         self.containers = []  # dtype: Person
         self.imageFolderPath = imageFolderPath
         self.PIL = PIL
-        # for imgidx in range(self.mpii.num_img):
-        for imgidx in range(35):
+        count = 0
+        for imgidx in range(self.mpii.num_img):
+        # for imgidx in range(35):
             for idx_pp in range(self.mpii.num_pp(imgidx)):
                 if self.mpii.isTrain(imgidx):
                     self.add_person(imgidx, idx_pp)
+                    count += 1
+            if count >= 30:
+                break
 
     def __getitem__(self, idx):
         '''
