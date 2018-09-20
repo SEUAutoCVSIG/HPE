@@ -4,7 +4,7 @@
 
     Author          ：Yu Du
     Email           : 1239988498@qq.com
-    Last edit date  : Tue Sep 17 01:05 2018
+    Last edit date  : Tue Sep 20 11:10 2018
 
 South East University Automation College, 211189 Nanjing China
 '''
@@ -108,13 +108,13 @@ class Person:
 
 
 class MpiiDataSet_sig(data.Dataset):
-    def __init__(self, imageFolderPath, annoPath, PIL=False):
+    def __init__(self, imageFolderPath, annoPath, if_train=True):
         super(MpiiDataSet_sig, self).__init__()
         self.mpii = Mpii(imageFolderPath, annoPath)
         self.num_person = 0
         self.containers = []  # dtype: Person
         self.imageFolderPath = imageFolderPath
-        self.PIL = PIL
+        self.if_train = if_train
         count = 0
         for imgidx in range(self.mpii.num_img):
         # for imgidx in range(35):
@@ -142,14 +142,15 @@ class MpiiDataSet_sig(data.Dataset):
             new_idx = random.randint(0, self.num_person - 1)
             img = self.containers[new_idx].sqrpadding()
             heatmap = self.containers[new_idx].gen_heatmap()
-        if self.PIL:
-            PILimg = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-            return PILimg, heatmap
-        else:
+        if self.if_train:
             img = img.swapaxes(1, 2).swapaxes(0, 1)
             img = torch.from_numpy(img).float()/255
             heatmap = torch.from_numpy(heatmap).repeat(2, 1, 1)
             return img, heatmap
+        else:
+            img_ = img.swapaxes(1, 2).swapaxes(0, 1)
+            img_ = torch.from_numpy(img_).float() / 255
+            return img_, img
 
     def __len__(self):
         return self.num_person
@@ -157,3 +158,6 @@ class MpiiDataSet_sig(data.Dataset):
     def add_person(self, imgidx, idx_pp):
         self.containers += [Person(self.mpii, imgidx, idx_pp)]
         self.num_person += 1
+
+    def get_cvimg(self, idx):
+        return self.containers[idx].sqrpadding()
