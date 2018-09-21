@@ -150,7 +150,8 @@ class MpiiDataSet_sig(data.Dataset):
         else:
             img_ = img.swapaxes(1, 2).swapaxes(0, 1)
             img_ = torch.from_numpy(img_).float() / 255
-            return img_, img
+            heatmap = torch.from_numpy(heatmap)
+            return img_, img, heatmap
 
     def __len__(self):
         return self.num_person
@@ -161,3 +162,6 @@ class MpiiDataSet_sig(data.Dataset):
 
     def get_cvimg(self, idx):
         return self.containers[idx].sqrpadding()
+
+    def get_parts(self, idx):
+        return self.containers[idx].parts

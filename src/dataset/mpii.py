@@ -102,7 +102,8 @@ class Mpii:
                         v = 1
                     return np.array([parts_info[i]['x'][0][0], parts_info[i]['y'][0][0]], int), v
             return np.zeros(2, int), 0
-        return -np.ones(2, int), -1
+        # return -np.ones(2, int), -1
+        return np.zeros(2, int), -1
 
     def normalization(self, idx, idx_pp):
         # Get head height for distance normalization
