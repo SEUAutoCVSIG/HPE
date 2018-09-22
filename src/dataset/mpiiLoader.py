@@ -60,11 +60,12 @@ class Person:
 
     def gen_heatmap(self):
         '''
-        return  : (numpy.ndarray) heatmap(16, 64, 64)
+        return  : (numpy.ndarray) heatmap(16, 128, 128)
         '''
         heatmap = np.zeros((self.num_part, 128, 128))
         for part in range(self.num_part):
-            if not(self.visible[part] == 0 or self.visible[part] == -1):
+            # if not(self.visible[part] == 0 or self.visible[part] == -1):
+            if self.visible[part] != -1:
                 heatmap[part] = calcul_heatmap(128, 128, self.parts[part][0]/2, self.parts[part][1]/2, 1)
         return heatmap
 
@@ -87,12 +88,16 @@ class Person:
             left = (new_height - new_width) // 2
             right = new_height - new_height - left
             img = cv2.copyMakeBorder(img, 0, 0, left, right, cv2.BORDER_CONSTANT, value=(128, 128, 128))
-            self.parts[:, 0] += left
+            for part in range(self.num_part):
+                if self.parts[part, 0] != 0:
+                    self.parts[part, 0] += left
         elif new_height < new_width:
             top = (new_width - new_height) // 2
             bottom = new_width - new_height - top
             img = cv2.copyMakeBorder(img, top, bottom, 0, 0, cv2.BORDER_CONSTANT, value=(128, 128, 128))
-            self.parts[:, 1] += top
+            for part in range(self.num_part):
+                if self.parts[part, 1] != 0:
+                    self.parts[part, 1] += top
         if max_ > 256:
             img = cv2.resize(img, (256, 256), interpolation=cv2.INTER_AREA)
         else:
@@ -150,7 +155,7 @@ class MpiiDataSet_sig(data.Dataset):
         else:
             img_ = img.swapaxes(1, 2).swapaxes(0, 1)
             img_ = torch.from_numpy(img_).float() / 255
-            heatmap = torch.from_numpy(heatmap)
+            heatmap = torch.from_numpy(heatmap.swapaxes(1, 2)).repeat(2, 1, 1)
             return img_, img, heatmap
 
     def __len__(self):
@@ -165,3 +170,6 @@ class MpiiDataSet_sig(data.Dataset):
 
     def get_parts(self, idx):
         return self.containers[idx].parts
+
+    def get_visibility(self, idx, part):
+        return self.containers[idx].visbile[part]
