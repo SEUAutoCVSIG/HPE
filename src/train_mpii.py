@@ -107,7 +107,8 @@ def train(model, FolderPath, Annotation, epochs, batch_size, learn_rate, momentu
         if epoch % check_point == 0:
             torch.save(model.state_dict(), weight_file_name)
 
-
+def accuracy(output, target):
+    pass
 
 
 if __name__ == '__main__':

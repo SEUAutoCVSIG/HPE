@@ -150,7 +150,7 @@ class MpiiDataSet_sig(data.Dataset):
         if self.if_train:
             img = img.swapaxes(1, 2).swapaxes(0, 1)
             img = torch.from_numpy(img).float()/255
-            heatmap = torch.from_numpy(heatmap).repeat(2, 1, 1)
+            heatmap = torch.from_numpy(heatmap.swapaxes(1, 2)).repeat(2, 1, 1)
             return img, heatmap
         else:
             img_ = img.swapaxes(1, 2).swapaxes(0, 1)
@@ -173,3 +173,6 @@ class MpiiDataSet_sig(data.Dataset):
 
     def get_visibility(self, idx, part):
         return self.containers[idx].visbile[part]
+
+    def get_norm(self, idx):
+        return self.containers[idx].normalize

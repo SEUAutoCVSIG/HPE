@@ -151,11 +151,11 @@ class Estimator:
             if not((tg[14][0] == 0 and tg[14][1] == 0) or (tg[15][0] == 0 and tg[15][1] == 0)):
                 img_tg = cv2.line(img_tg, tg[14], tg[15], (0, 255, 0), 3)
 
+
             cv2.imshow("Estimator", img)
             cv2.imshow("Ground Truth", img_gt)
             cv2.imshow("Target", img_tg)
             cv2.waitKey(0)
-
 
 
 if __name__ == "__main__":
