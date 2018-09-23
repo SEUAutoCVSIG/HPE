@@ -109,6 +109,7 @@ class Person:
         # right = self.size - new_width - left
         # img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(128, 128, 128))
         self.parts = self.parts*256/max_
+        self.normalize = self.normalize*256/max_
         return img
 
 
@@ -126,9 +127,9 @@ class MpiiDataSet_sig(data.Dataset):
             for idx_pp in range(self.mpii.num_pp(imgidx)):
                 if self.mpii.isTrain(imgidx):
                     self.add_person(imgidx, idx_pp)
-                    count += 1
-            if count >= 30:
-                break
+                    # count += 1
+            # if count >= 30:
+            #     break
 
     def __getitem__(self, idx):
         '''
@@ -144,19 +145,19 @@ class MpiiDataSet_sig(data.Dataset):
             heatmap = self.containers[idx].gen_heatmap()
         except:
             # If failed to load the pointed image, using a random image
-            new_idx = random.randint(0, self.num_person - 1)
-            img = self.containers[new_idx].sqrpadding()
-            heatmap = self.containers[new_idx].gen_heatmap()
+            idx = random.randint(0, self.num_person - 1)
+            img = self.containers[idx].sqrpadding()
+            heatmap = self.containers[idx].gen_heatmap()
         if self.if_train:
             img = img.swapaxes(1, 2).swapaxes(0, 1)
             img = torch.from_numpy(img).float()/255
             heatmap = torch.from_numpy(heatmap.swapaxes(1, 2)).repeat(2, 1, 1)
-            return img, heatmap
+            return idx, img, heatmap
         else:
             img_ = img.swapaxes(1, 2).swapaxes(0, 1)
             img_ = torch.from_numpy(img_).float() / 255
             heatmap = torch.from_numpy(heatmap.swapaxes(1, 2)).repeat(2, 1, 1)
-            return img_, img, heatmap
+            return idx, img_, img, heatmap
 
     def __len__(self):
         return self.num_person
@@ -171,8 +172,11 @@ class MpiiDataSet_sig(data.Dataset):
     def get_parts(self, idx):
         return self.containers[idx].parts
 
+    def get_num_part(self, idx):
+        return self.containers[idx].num_part
+
     def get_visibility(self, idx, part):
-        return self.containers[idx].visbile[part]
+        return self.containers[idx].visible[part]
 
     def get_norm(self, idx):
         return self.containers[idx].normalize
