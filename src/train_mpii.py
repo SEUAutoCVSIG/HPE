@@ -32,9 +32,9 @@ from math import sqrt
 You need to change the following parameters according to your own condition.
 '''
 # My local path
-FolderPath = '/Users/midora/Desktop/Python/HPElocal/res/images'
-Annotation = '/Users/midora/Desktop/Python/HPE/res/mpii_human_pose_v1_u12_1.mat'
-WeightPath = '/Users/midora/Desktop/Python/HPE/data/'
+FolderPath = 'E:/images'
+Annotation = 'E:/HPE/res/mpii_human_pose_v1_u12_1.mat'
+WeightPath = 'E:/HPE/src/'
 
 '''********************************************************************'''
 
@@ -77,43 +77,50 @@ def train(model, FolderPath, Annotation, epochs, batch_size, learn_rate, momentu
              'lsho', 'lelb', 'lwri']
 
     # Train process
-    correct = np.zeros((16, 2))
-    for epoch in range(epochs):
-        for i, (idx, data, target) in enumerate(data_loader):
-            # print(idx.shape)
-            # print(idx[0])
-            # print(data)
-            # print(target)
-            # print('data = ', data.shape)
-            # print('target = ', target.shape)
-            data = Variable(data.type(Tensor))
-            target = Variable(target.type(Tensor), requires_grad=False)
-            optimizer.zero_grad()
-            output = model(data)
-            # print(output)
-            # print('output = ', output.shape)
-            # print('target = ', target.shape)
-            loss = loss_func(output, target)
-            # print(loss)
-            # print(type(loss))
-            loss.backward()
-            optimizer.step()
-            zero = np.zeros(16)
-            correct += if_correct(idx, dataset, output, target, batch_size)
-            accuracy = correct[:, 0]/correct[:, 1]
-            tt_acc = np.sum(accuracy)/len(accuracy)
+    with open('loss_record.txt', 'a+') as fp:
+        for epoch in range(epochs):
+            for i, (idx, data, target) in enumerate(data_loader):
+                data = Variable(data.type(Tensor))
+                target = Variable(target.type(Tensor), requires_grad=False)
+                optimizer.zero_grad()
+                output = model(data)
 
-            # Output train info
-            print('[Epoch %d/%d, Batch %d/%d] [Loss: ' % (epoch+1, epochs, i+1, len(data_loader)), end='')
-            # for part in range(len(parts)):
-            #     part_target = torch.cat((target[:, part, :, :], target[:, part + 16, :, :]), 1)
-            #     part_output = torch.cat((output[:, part, :, :], output[:, part + 16, :, :]), 1)
-            #     loss_ = loss_func(part_output, part_target)
-            #     print('%s %f ' % (parts[part], loss_), end='')
-            print('total %f     Accuracy %f]' % (loss, tt_acc))
+                op_np = np.zeros((16, 2), dtype=int)
+                tg_np = np.zeros((16, 2), dtype=int)
+                for part in range(16):
+                    part_output = output[0, part + 16, :, :]
+                    part_target = target[0, part + 16, :, :]
+                    if part_output.max() != 0:
+                        op_np[part][0], op_np[part][1] = np.where(part_output == part_output.max())
+                    if part_target.max() != 0:
+                        tg_np[part][0], tg_np[part][1] = np.where(part_target == part_target.max())
+                # print('target = ', tg_np[0])
+                # print('output = ', op_np[0])
 
-        if epoch % check_point == 0:
-            torch.save(model.state_dict(), weight_file_name)
+                loss = 100*loss_func(output, target)
+                # print(loss)
+                # print(type(loss))
+                loss.backward()
+                optimizer.step()
+                # zero = np.zeros(16)
+                correct = np.zeros((16, 2))
+                correct = if_correct(idx, dataset, output, target, batch_size)
+                correct[:, 1] += 1e-16
+                accuracy = correct[:, 0]/correct[:, 1]
+                recall = np.sum(accuracy)/len(accuracy)
+
+                # Output train info
+                print('[Epoch %d/%d, Batch %d/%d] ' % (epoch+1, epochs, i+1, len(data_loader)), end='')
+                # for part in range(len(parts)):
+                #     part_target = torch.cat((target[:, part, :, :], target[:, part + 16, :, :]), 1)
+                #     part_output = torch.cat((output[:, part, :, :], output[:, part + 16, :, :]), 1)
+                #     loss_ = loss_func(part_output, part_target)
+                #     print('%s %f ' % (parts[part], loss_), end='')
+                print('[loss: %f     recall: %f]' % (loss, recall))
+                fp.write('loss: %f     recall: %f\n'% (loss, recall))
+            if epoch % check_point == 0:
+                torch.save(model.state_dict(), weight_file_name)
+    torch.save(model.state_dict(), weight_file_name)
 
 
 def if_correct(idx, dataset, output, target, batch_size):
@@ -123,11 +130,12 @@ def if_correct(idx, dataset, output, target, batch_size):
     for img in range(batch_size):
         num_part = dataset.get_num_part(int(idx[img]))
         norm = dataset.get_norm(int(idx[img]))
-        print('norm = ', norm)
+        # print('norm = ', norm)
         for part in range(num_part):
             part_output = output[img, part + num_part, :, :]
             part_target = target[img, part + num_part, :, :]
-            op_coor[part][0], op_coor[part][1] = np.where(part_output == part_output.max())
+            if part_output.max() != 0:
+                op_coor[part][0], op_coor[part][1] = np.where(part_output == part_output.max())
             if part_target.max() != 0:
                 tg_coor[part][0], tg_coor[part][1] = np.where(part_target == part_target.max())
         dis = op_coor - tg_coor
@@ -136,7 +144,7 @@ def if_correct(idx, dataset, output, target, batch_size):
         for part in range(num_part):
             if dataset.get_visibility(int(idx[img]), part) != -1:
                 correct[part, 1] += 1
-                if sqrt(dis[part]) <= norm:
+                if sqrt(dis[part]) <= norm/10:
                     correct[part, 0] += 1
     return correct
 
@@ -148,11 +156,11 @@ if __name__ == '__main__':
     # Model
     model = StackedHourglass(16)
     if os.path.isfile(weight_file_name):
-        model.load_state_dict(torch.load(weight_file_name))
+       model.load_state_dict(torch.load(weight_file_name))
     if torch.cuda.is_available():
         model.cuda()
 
     model.train()
 
-    train(model, FolderPath, Annotation, epochs=100, batch_size=2, learn_rate=2.5e-4, momentum=0.9, decay=0.0005,
+    train(model, FolderPath, Annotation, epochs=10, batch_size=4, learn_rate=0.0005, momentum=0.9, decay=0.0005,
           check_point=1, weight_file_name=weight_file_name)

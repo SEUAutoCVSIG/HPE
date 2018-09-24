@@ -43,6 +43,8 @@ class Person:
         self.num_part = mpii.num_part
         self.visible = -np.ones(mpii.num_part)
         self.istrain = mpii.isTrain(idx)
+        self.scale = 1
+        self.isFirstLoad = True
         if self.istrain:
             self.objpos, self.scale = mpii.location(idx, idx_pp)
             self.normalize = mpii.normalization(idx, idx_pp)
@@ -66,7 +68,7 @@ class Person:
         for part in range(self.num_part):
             # if not(self.visible[part] == 0 or self.visible[part] == -1):
             if self.visible[part] != -1:
-                heatmap[part] = calcul_heatmap(128, 128, self.parts[part][0]/2, self.parts[part][1]/2, 1)
+                heatmap[part] = calcul_heatmap(128, 128, self.parts[part][0]*self.scale/2, self.parts[part][1]*self.scale/2, 1)
         return heatmap
 
     def sqrpadding(self):
@@ -78,25 +80,26 @@ class Person:
         (x1, y1) = self.coor1
         (x2, y2) = self.coor2
         img = img[max(y1, 0):min(y2, height), max(x1, 0):min(x2, width)]
-        if x1 > 0:
+        if x1 > 0 and self.isFirstLoad:
             self.parts[:, 0] -= x1
-        if y1 > 0:
+        if y1 > 0 and self.isFirstLoad:
             self.parts[:, 1] -= y1
         new_height, new_width = img.shape[:2]
         max_ = max(new_width, new_height)
+        self.scale = 256/max_
         if new_height > new_width:
             left = (new_height - new_width) // 2
             right = new_height - new_height - left
             img = cv2.copyMakeBorder(img, 0, 0, left, right, cv2.BORDER_CONSTANT, value=(128, 128, 128))
             for part in range(self.num_part):
-                if self.parts[part, 0] != 0:
+                if self.parts[part, 0] != 0 and self.isFirstLoad:
                     self.parts[part, 0] += left
         elif new_height < new_width:
             top = (new_width - new_height) // 2
             bottom = new_width - new_height - top
             img = cv2.copyMakeBorder(img, top, bottom, 0, 0, cv2.BORDER_CONSTANT, value=(128, 128, 128))
             for part in range(self.num_part):
-                if self.parts[part, 1] != 0:
+                if self.parts[part, 1] != 0 and self.isFirstLoad:
                     self.parts[part, 1] += top
         if max_ > 256:
             img = cv2.resize(img, (256, 256), interpolation=cv2.INTER_AREA)
@@ -108,10 +111,16 @@ class Person:
         # bottom = self.size - new_height - top
         # right = self.size - new_width - left
         # img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(128, 128, 128))
-        self.parts = self.parts*256/max_
-        self.normalize = self.normalize*256/max_
+        # self.parts = self.parts*256/self.max_
+        # self.normalize = self.normalize*256/self.max_
+        self.isFirstLoad = False
         return img
 
+    def get_norm(self):
+        return self.normalize*self.scale
+
+    def get_parts(self):
+        return self.parts*self.scale
 
 class MpiiDataSet_sig(data.Dataset):
     def __init__(self, imageFolderPath, annoPath, if_train=True):
@@ -127,9 +136,10 @@ class MpiiDataSet_sig(data.Dataset):
             for idx_pp in range(self.mpii.num_pp(imgidx)):
                 if self.mpii.isTrain(imgidx):
                     self.add_person(imgidx, idx_pp)
-                    # count += 1
-            # if count >= 30:
+            #         count += 1
+            # if count >= 1:
             #     break
+
 
     def __getitem__(self, idx):
         '''
@@ -170,7 +180,7 @@ class MpiiDataSet_sig(data.Dataset):
         return self.containers[idx].sqrpadding()
 
     def get_parts(self, idx):
-        return self.containers[idx].parts
+        return self.containers[idx].get_parts()
 
     def get_num_part(self, idx):
         return self.containers[idx].num_part
@@ -179,4 +189,4 @@ class MpiiDataSet_sig(data.Dataset):
         return self.containers[idx].visible[part]
 
     def get_norm(self, idx):
-        return self.containers[idx].normalize
+        return self.containers[idx].get_norm()

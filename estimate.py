@@ -25,8 +25,12 @@ class Estimator:
                       'lsho', 'lelb', 'lwri']
 
     def test(self, dataset):
-        data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
+        data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
+        cuda = torch.cuda.is_available()
+        Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
         for i, (idx, data, img, target) in enumerate(data_loader):
+            data = Variable(data.type(Tensor))
+            target = Variable(target.type(Tensor), requires_grad=False)
             # print(target.shape)
             gt_np = dataset.get_parts(int(idx))
             img = np.array(img[0])
@@ -35,41 +39,42 @@ class Estimator:
             # Using heatmap of ground truth
             img_tg = deepcopy(img)
             output = self.model(data)
-            # output= target
-            coor_np = np.zeros((16, 2), dtype=int)
+            op_np = np.zeros((16, 2), dtype=int)
             tg_np = np.zeros((16, 2), dtype=int)
             for part in range(len(self.parts)):
                 part_output = output[0, part + len(self.parts), :, :]
                 part_target = target[0, part + len(self.parts), :, :]
                 # print(part_heatmap.shape)
                 # print(part_target.shape)
-
-                coor_np[part][0], coor_np[part][1] = np.where(part_output == part_output.max())
+                if part_output.max() != 0:
+                    op_np[part][0], op_np[part][1] = np.where(part_output == part_output.max())
                 if part_target.max() != 0:
                     tg_np[part][0], tg_np[part][1] = np.where(part_target == part_target.max())
-            coor = [[0, 0]] * len(self.parts)
+            print('target = ', tg_np)
+            print('output = ', op_np)
+            op = [[0, 0]] * len(self.parts)
             gt = [[0, 0]] * len(self.parts)
             tg = [[0, 0]] * len(self.parts)
             for part in range(len(self.parts)):
-                coor[part] = coor_np[part][0] * 2, coor_np[part][1] * 2
+                op[part] = op_np[part][0] * 2, op_np[part][1] * 2
                 gt[part] = int(gt_np[part][0]), int(gt_np[part][1])
                 tg[part] = int(tg_np[part][0] * 2), int(tg_np[part][1] * 2)
 
-            img = cv2.line(img, coor[0], coor[1], (0, 255, 0), 3)
-            img = cv2.line(img, coor[1], coor[2], (0, 255, 0), 3)
-            img = cv2.line(img, coor[2], coor[6], (0, 255, 0), 3)
-            img = cv2.line(img, coor[3], coor[6], (0, 255, 0), 3)
-            img = cv2.line(img, coor[3], coor[4], (0, 255, 0), 3)
-            img = cv2.line(img, coor[4], coor[5], (0, 255, 0), 3)
-            img = cv2.line(img, coor[6], coor[7], (0, 255, 0), 3)
-            img = cv2.line(img, coor[7], coor[8], (0, 255, 0), 3)
-            img = cv2.line(img, coor[8], coor[9], (0, 255, 0), 3)
-            img = cv2.line(img, coor[7], coor[12], (0, 255, 0), 3)
-            img = cv2.line(img, coor[11], coor[12], (0, 255, 0), 3)
-            img = cv2.line(img, coor[10], coor[11], (0, 255, 0), 3)
-            img = cv2.line(img, coor[7], coor[13], (0, 255, 0), 3)
-            img = cv2.line(img, coor[13], coor[14], (0, 255, 0), 3)
-            img = cv2.line(img, coor[14], coor[15], (0, 255, 0), 3)
+            img = cv2.line(img, op[0], op[1], (0, 255, 0), 3)
+            img = cv2.line(img, op[1], op[2], (0, 255, 0), 3)
+            img = cv2.line(img, op[2], op[6], (0, 255, 0), 3)
+            img = cv2.line(img, op[3], op[6], (0, 255, 0), 3)
+            img = cv2.line(img, op[3], op[4], (0, 255, 0), 3)
+            img = cv2.line(img, op[4], op[5], (0, 255, 0), 3)
+            img = cv2.line(img, op[6], op[7], (0, 255, 0), 3)
+            img = cv2.line(img, op[7], op[8], (0, 255, 0), 3)
+            img = cv2.line(img, op[8], op[9], (0, 255, 0), 3)
+            img = cv2.line(img, op[7], op[12], (0, 255, 0), 3)
+            img = cv2.line(img, op[11], op[12], (0, 255, 0), 3)
+            img = cv2.line(img, op[10], op[11], (0, 255, 0), 3)
+            img = cv2.line(img, op[7], op[13], (0, 255, 0), 3)
+            img = cv2.line(img, op[13], op[14], (0, 255, 0), 3)
+            img = cv2.line(img, op[14], op[15], (0, 255, 0), 3)
 
             if not ((gt[0][0] == 0 and gt[0][1] == 0) or (gt[1][0] == 0 and gt[1][1] == 0)):
                 img_gt = cv2.line(img_gt, gt[0], gt[1], (0, 255, 0), 3)
