@@ -75,7 +75,7 @@ class detector():
         # Make prediction and transform the prediction to the original scale
         prediction = self.model(canvas)
         prediction = non_max_suppression(prediction, self.model.class_num,
-                                         conf_thres=0.5)[0]
+                                         conf_thres=0.8, nms_thres=0.3)[0]
 
         prediction[:, [0, 2]] -= pad_w
         prediction[:, [1, 3]] -= pad_h

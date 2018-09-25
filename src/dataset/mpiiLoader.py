@@ -88,14 +88,16 @@ class Person:
         self.scale = 256/max_
         if new_height > new_width:
             left = (new_height - new_width) // 2
-            right = new_height - new_height - left
+            right = abs(new_height - new_height - left)
+            # print('height = %f width = %f left = %f right = %f' % (new_height, new_width,left, right))
             img = cv2.copyMakeBorder(img, 0, 0, left, right, cv2.BORDER_CONSTANT, value=(128, 128, 128))
             for part in range(self.num_part):
                 if self.parts[part, 0] != 0 and self.isFirstLoad:
                     self.parts[part, 0] += left
         elif new_height < new_width:
             top = (new_width - new_height) // 2
-            bottom = new_width - new_height - top
+            bottom = abs(new_width - new_height - top)
+            # print('height = %f width = %f  top = %f bottom = %f' % (new_height, new_width, top, bottom))
             img = cv2.copyMakeBorder(img, top, bottom, 0, 0, cv2.BORDER_CONSTANT, value=(128, 128, 128))
             for part in range(self.num_part):
                 if self.parts[part, 1] != 0 and self.isFirstLoad:
@@ -112,7 +114,8 @@ class Person:
         # img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(128, 128, 128))
         # self.parts = self.parts*256/self.max_
         # self.normalize = self.normalize*256/self.max_
-        self.isFirstLoad = False
+        if self.isFirstLoad:
+            self.isFirstLoad = False
         return img
 
     def get_norm(self):
