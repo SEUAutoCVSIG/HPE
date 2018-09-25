@@ -64,7 +64,6 @@ class detector():
         canvas[(self.img_size - new_h)//2:(self.img_size - new_h)//2 + new_h,
                (self.img_size - new_w)//2:(self.img_size - new_w)//2 + new_w,
                 :] = img_
-        canvas_ = canvas.copy()
         canvas = canvas[:, :, ::-1].transpose(2, 0, 1)
 
         # Normalization
@@ -107,7 +106,6 @@ class detector():
         #finally:
         cv2.imshow('prediction.jpg', img)
         cv2.waitKey(waitkey)
-
 
 if __name__ == "__main__":
     model = darknet("D:/ShaoshuYang/HPE/cfg/yolov3-1.cfg", 80)

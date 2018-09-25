@@ -69,8 +69,6 @@ class Estimator:
 
             cv2.waitKey(0)
 
-    def estimate(self, img, bbox):
-
     def tg_check(self, dataset):
         data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
         cuda = torch.cuda.is_available()
