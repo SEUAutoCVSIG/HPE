@@ -43,7 +43,7 @@ def train(model, root, list_dir, epochs, batch_size, learn_rate, momentum,
     '''
     # Define data loader
     data_loader = torch.utils.data.DataLoader(COCO(root, list_dir), batch_size=
-                                              batch_size, shuffle=False)
+                                              batch_size, shuffle=True)
 
     # Define optimizer
     optimizer = optim.SGD(model.parameters(), lr=learn_rate, momentum=momentum,
@@ -83,12 +83,12 @@ def train(model, root, list_dir, epochs, batch_size, learn_rate, momentum,
 
 if __name__ == '__main__':
     model = darknet("D:/ShaoshuYang/HPE/cfg/yolov3-1.cfg", 1)
-    model.load_weight("D:/ShaoshuYang/HPE/src/yolov3-1-1.weights")
+    model.load_weight("D:/ShaoshuYang/HPE/src/yolov3-1.weights")
 
     if torch.cuda.is_available():
         model.cuda()
 
     model.train()
 
-    train(model, "D:/ShaoshuYang/COCO/", "coco_anno.txt", 30, 6, 0.001, 0.9, 0.0005, 1,
-          "yolov3-1-1.weights")
+    train(model, "D:/ShaoshuYang/COCO/", "coco_anno.txt", 11, 8, 0.00005, 0.9, 0.0005, 1,
+          "yolov3-1.weights")
