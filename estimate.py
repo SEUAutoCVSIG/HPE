@@ -55,9 +55,9 @@ class Estimator:
             gt = [[0, 0]] * len(self.parts)
             tg = [[0, 0]] * len(self.parts)
             for part in range(len(self.parts)):
-                op[part] = op_np[part][0] * 2, op_np[part][1] * 2
+                op[part] = op_np[part][0] * 4, op_np[part][1] * 4
                 gt[part] = int(gt_np[part][0]), int(gt_np[part][1])
-                tg[part] = int(tg_np[part][0] * 2), int(tg_np[part][1] * 2)
+                tg[part] = int(tg_np[part][0] * 4), int(tg_np[part][1] * 4)
 
             draw('Estimator', img, op, 3)
             draw('Ground Truth', img_gt, gt, 3)
@@ -82,7 +82,7 @@ class Estimator:
             # print('target = ', tg_np)
             tg = [[0, 0]] * len(self.parts)
             for part in range(len(self.parts)):
-                tg[part] = int(tg_np[part][0] * 2), int(tg_np[part][1] * 2)
+                tg[part] = int(tg_np[part][0] * 4), int(tg_np[part][1] * 4)
             draw('Target', img, tg, 3, 0)
 
 
