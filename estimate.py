@@ -59,10 +59,17 @@ class Estimator:
                 gt[part] = int(gt_np[part][0]), int(gt_np[part][1])
                 tg[part] = int(tg_np[part][0] * 4), int(tg_np[part][1] * 4)
 
-            draw('Estimator', img, op, 3)
-            draw('Ground Truth', img_gt, gt, 3)
-            draw('Target', img_tg, tg, 3)
+            draw(img, op, 3)
+            draw(img_gt, gt, 3)
+            draw(img_tg, tg, 3)
+
+            cv2.imshow('Estimator', img)
+            cv2.imshow('Ground Truth', img_gt)
+            cv2.imshow('Target', img_tg)
+
             cv2.waitKey(0)
+
+    def estimate(self, img, bbox):
 
     def tg_check(self, dataset):
         data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
@@ -83,7 +90,10 @@ class Estimator:
             tg = [[0, 0]] * len(self.parts)
             for part in range(len(self.parts)):
                 tg[part] = int(tg_np[part][0] * 4), int(tg_np[part][1] * 4)
-            draw('Target', img, tg, 3, 0)
+            draw(img, tg, 3, 0)
+
+            cv2.imshow('Target', img)
+            cv2.waitKey(0)
 
 
 

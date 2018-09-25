@@ -10,23 +10,32 @@ South East University Automation College, 211189 Nanjing China
 '''
 
 from src.model.darknet import darknet
+from src.model.hourglass import StackedHourglass
 from detect import detector
+from estimate import estimator
 import torch
 import cv2
+from src.utils import *
 
 class HPE():
     def __init__(self):
         # Deploy darknet53 model on cooresponding device
-        model = darknet("cfg/yolov3-1.cfg", 1)
-        model.load_weight("yolov3-1.weights")
+        yolov3 = darknet("cfg/yolov3-1.cfg", 1)
+        yolov3.load_weight("yolov3-1.weights")
+
+        # Deploy stacked hourglass model
+        stackedhourglass = StackedHourglass(16)
+        stackedhourglass.load_state_dict(torch.load("stacked_hourlgass.pkl"))
 
         cuda = torch.cuda.is_available()
         if cuda:
-            model.cuda()
+            yolov3.cuda()
+            stackedhourglass.cuda()
 
-        model.eval()
+        yolov3.eval()
 
-        self.detector = detector(model)
+        self.detector = detector(yolov3)
+        self.estimator = estimator(stackedhourglass)
 
     # Capture the frount camera
     def video_cap(self):
@@ -87,9 +96,31 @@ class HPE():
             Returns:
                  Image with key points
         '''
+        draw("estimation", img, prediction, 3, 0)
+
+    def pose_estimate(self):
+        cap = cv2.VideoCapture(0)
+
+        while 1:
+            ret, frame = cap.read()
+            try:
+                # Making prediction
+                prediction = self.detector.detect(frame)
+
+                for prediction_ in prediction:
 
 
+                # Press 'q' to exit
+                cv2.imshow("target", frame)
+                if cv2.waitKey(100) & 0xFF == ord('q'):
+                    break
 
+            except:
+                cv2.imshow("target", frame)
+                if cv2.waitKey(100) & 0xFF == ord('q'):
+                    break
+
+        cap.release()
 
 
 if __name__ == '__main__':

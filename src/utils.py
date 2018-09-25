@@ -567,7 +567,7 @@ def build_target(pred_boxes, target, anchors, num_anchors, num_classes,
 
     return nGT, nCorrect, mask, conf_mask, tx, ty, tw, th, tconf, tcls
 
-def draw(window_name, img, coor, thick, key=None):
+def draw(img, coor, thick):
     '''
         Args:
             window_name: (string)
@@ -606,6 +606,3 @@ def draw(window_name, img, coor, thick, key=None):
         img = cv2.line(img, coor[13], coor[14], (49, 56, 218), thick)
     if not ((coor[14][0] == 0 and coor[14][1] == 0) or (coor[15][0] == 0 and coor[15][1] == 0)):
         img = cv2.line(img, coor[14], coor[15], (23, 25, 118), thick)
-    cv2.imshow(window_name, img)
-    if key is not None:
-        cv2.waitKey(key)
