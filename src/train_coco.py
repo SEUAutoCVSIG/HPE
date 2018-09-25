@@ -30,7 +30,7 @@ def train(model, root, list_dir, epochs, batch_size, learn_rate, momentum,
              model        : (nn.Module) untrained darknet
              root         : (string) directory of root
              list_dir     : (string) directory to list file
-             epochs      : (int) max epoches
+             epochs       : (int) max epoches
              batch_size   : (int) batch size
              learn_rate   : (float) learn rate
              momentum     : (float) momentum

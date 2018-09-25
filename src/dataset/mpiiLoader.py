@@ -4,7 +4,7 @@
 
     Author          ：Yu Du
     Email           : 1239988498@qq.com
-    Last edit date  : Tue Sep 17 01:05 2018
+    Last edit date  : Tue Sep 20 11:10 2018
 
 South East University Automation College, 211189 Nanjing China
 '''
@@ -43,6 +43,8 @@ class Person:
         self.num_part = mpii.num_part
         self.visible = -np.ones(mpii.num_part)
         self.istrain = mpii.isTrain(idx)
+        self.scale = 1
+        self.isFirstLoad = True
         if self.istrain:
             self.objpos, self.scale = mpii.location(idx, idx_pp)
             self.normalize = mpii.normalization(idx, idx_pp)
@@ -60,12 +62,13 @@ class Person:
 
     def gen_heatmap(self):
         '''
-        return  : (numpy.ndarray) heatmap(16, 64, 64)
+        return  : (numpy.ndarray) heatmap(16, 128, 128)
         '''
         heatmap = np.zeros((self.num_part, 128, 128))
         for part in range(self.num_part):
-            if not(self.visible[part] == 0 or self.visible[part] == -1):
-                heatmap[part] = calcul_heatmap(128, 128, self.parts[part][0]/2, self.parts[part][1]/2, 1)
+            # if not(self.visible[part] == 0 or self.visible[part] == -1):
+            if self.visible[part] != -1:
+                heatmap[part] = calcul_heatmap(128, 128, self.parts[part][0]*self.scale/2, self.parts[part][1]*self.scale/2, 1)
         return heatmap
 
     def sqrpadding(self):
@@ -77,22 +80,29 @@ class Person:
         (x1, y1) = self.coor1
         (x2, y2) = self.coor2
         img = img[max(y1, 0):min(y2, height), max(x1, 0):min(x2, width)]
-        if x1 > 0:
+        if x1 > 0 and self.isFirstLoad:
             self.parts[:, 0] -= x1
-        if y1 > 0:
+        if y1 > 0 and self.isFirstLoad:
             self.parts[:, 1] -= y1
         new_height, new_width = img.shape[:2]
         max_ = max(new_width, new_height)
+        self.scale = 256/max_
         if new_height > new_width:
             left = (new_height - new_width) // 2
-            right = new_height - new_height - left
+            right = abs(new_height - new_height - left)
+            # print('height = %f width = %f left = %f right = %f' % (new_height, new_width,left, right))
             img = cv2.copyMakeBorder(img, 0, 0, left, right, cv2.BORDER_CONSTANT, value=(128, 128, 128))
-            self.parts[:, 0] += left
+            for part in range(self.num_part):
+                if self.parts[part, 0] != 0 and self.isFirstLoad:
+                    self.parts[part, 0] += left
         elif new_height < new_width:
             top = (new_width - new_height) // 2
-            bottom = new_width - new_height - top
+            bottom = abs(new_width - new_height - top)
+            # print('height = %f width = %f  top = %f bottom = %f' % (new_height, new_width, top, bottom))
             img = cv2.copyMakeBorder(img, top, bottom, 0, 0, cv2.BORDER_CONSTANT, value=(128, 128, 128))
-            self.parts[:, 1] += top
+            for part in range(self.num_part):
+                if self.parts[part, 1] != 0 and self.isFirstLoad:
+                    self.parts[part, 1] += top
         if max_ > 256:
             img = cv2.resize(img, (256, 256), interpolation=cv2.INTER_AREA)
         else:
@@ -103,23 +113,36 @@ class Person:
         # bottom = self.size - new_height - top
         # right = self.size - new_width - left
         # img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(128, 128, 128))
-        self.parts = self.parts*256/max_
+        # self.parts = self.parts*256/self.max_
+        # self.normalize = self.normalize*256/self.max_
+        if self.isFirstLoad:
+            self.isFirstLoad = False
         return img
 
+    def get_norm(self):
+        return self.normalize*self.scale
+
+    def get_parts(self):
+        return self.parts*self.scale
 
 class MpiiDataSet_sig(data.Dataset):
-    def __init__(self, imageFolderPath, annoPath, PIL=False):
+    def __init__(self, imageFolderPath, annoPath, if_train=True):
         super(MpiiDataSet_sig, self).__init__()
         self.mpii = Mpii(imageFolderPath, annoPath)
         self.num_person = 0
         self.containers = []  # dtype: Person
         self.imageFolderPath = imageFolderPath
-        self.PIL = PIL
-        # for imgidx in range(self.mpii.num_img):
-        for imgidx in range(35):
+        self.if_train = if_train
+        count = 0
+        for imgidx in range(self.mpii.num_img):
+        # for imgidx in range(35):
             for idx_pp in range(self.mpii.num_pp(imgidx)):
                 if self.mpii.isTrain(imgidx):
                     self.add_person(imgidx, idx_pp)
+            #         count += 1
+            # if count >= 1:
+            #     break
+
 
     def __getitem__(self, idx):
         '''
@@ -135,17 +158,19 @@ class MpiiDataSet_sig(data.Dataset):
             heatmap = self.containers[idx].gen_heatmap()
         except:
             # If failed to load the pointed image, using a random image
-            new_idx = random.randint(0, self.num_person - 1)
-            img = self.containers[new_idx].sqrpadding()
-            heatmap = self.containers[new_idx].gen_heatmap()
-        if self.PIL:
-            PILimg = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-            return PILimg, heatmap
-        else:
+            idx = random.randint(0, self.num_person - 1)
+            img = self.containers[idx].sqrpadding()
+            heatmap = self.containers[idx].gen_heatmap()
+        if self.if_train:
             img = img.swapaxes(1, 2).swapaxes(0, 1)
             img = torch.from_numpy(img).float()/255
-            heatmap = torch.from_numpy(heatmap).repeat(2, 1, 1)
-            return img, heatmap
+            heatmap = torch.from_numpy(heatmap.swapaxes(1, 2)).repeat(2, 1, 1)
+            return idx, img, heatmap
+        else:
+            img_ = img.swapaxes(1, 2).swapaxes(0, 1)
+            img_ = torch.from_numpy(img_).float() / 255
+            heatmap = torch.from_numpy(heatmap.swapaxes(1, 2)).repeat(2, 1, 1)
+            return idx, img_, img, heatmap
 
     def __len__(self):
         return self.num_person
@@ -153,3 +178,18 @@ class MpiiDataSet_sig(data.Dataset):
     def add_person(self, imgidx, idx_pp):
         self.containers += [Person(self.mpii, imgidx, idx_pp)]
         self.num_person += 1
+
+    def get_cvimg(self, idx):
+        return self.containers[idx].sqrpadding()
+
+    def get_parts(self, idx):
+        return self.containers[idx].get_parts()
+
+    def get_num_part(self, idx):
+        return self.containers[idx].num_part
+
+    def get_visibility(self, idx, part):
+        return self.containers[idx].visible[part]
+
+    def get_norm(self, idx):
+        return self.containers[idx].get_norm()
