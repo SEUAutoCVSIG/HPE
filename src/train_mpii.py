@@ -85,15 +85,17 @@ def train(model, FolderPath, Annotation, epochs, batch_size, learn_rate, momentu
                 optimizer.zero_grad()
                 output = model(data)
 
-                op_np = np.zeros((16, 2), dtype=int)
-                tg_np = np.zeros((16, 2), dtype=int)
-                for part in range(16):
-                    part_output = output[0, part + 16, :, :]
-                    part_target = target[0, part + 16, :, :]
-                    if part_output.max() != 0:
-                        op_np[part][0], op_np[part][1] = np.where(part_output == part_output.max())
-                    if part_target.max() != 0:
-                        tg_np[part][0], tg_np[part][1] = np.where(part_target == part_target.max())
+                # op_np = np.zeros((16, 2), dtype=int)
+                # tg_np = np.zeros((16, 2), dtype=int)
+                # for part in range(16):
+                #     part_output = output[0, part + 16, :, :]
+                #     part_target = target[0, part + 16, :, :]
+                #     if part_output.max() != 0:
+                #         op_np[part][0] = np.where(part_output == part_output.max())[0]
+                #         op_np[part][1] = np.where(part_output == part_output.max())[1]
+                #     if part_target.max() != 0:
+                #         tg_np[part][0] = np.where(part_target == part_target.max())[0]
+                #         tg_np[part][1] = np.where(part_target == part_target.max())[1]
                 # print('target = ', tg_np[0])
                 # print('output = ', op_np[0])
 
@@ -135,9 +137,12 @@ def if_correct(idx, dataset, output, target, batch_size):
             part_output = output[img, part + num_part, :, :]
             part_target = target[img, part + num_part, :, :]
             if part_output.max() != 0:
-                op_coor[part][0], op_coor[part][1] = np.where(part_output == part_output.max())
+                op_coor[part][0] = np.where(part_output == part_output.max())[0][0]
+                op_coor[part][1] = np.where(part_output == part_output.max())[1][0]
+                # print(np.where(part_output == part_output.max()))
             if part_target.max() != 0:
-                tg_coor[part][0], tg_coor[part][1] = np.where(part_target == part_target.max())
+                tg_coor[part][0] = np.where(part_target == part_target.max())[0][0]
+                tg_coor[part][1] = np.where(part_target == part_target.max())[1][0]
         dis = op_coor - tg_coor
         dis = dis**2
         dis = dis[:, 0] + dis[:, 1]
@@ -162,5 +167,5 @@ if __name__ == '__main__':
 
     model.train()
 
-    train(model, FolderPath, Annotation, epochs=10, batch_size=4, learn_rate=0.0005, momentum=0.9, decay=0.0005,
+    train(model, FolderPath, Annotation, epochs=10, batch_size=2, learn_rate=0.005, momentum=0.9, decay=0.0005,
           check_point=1, weight_file_name=weight_file_name)

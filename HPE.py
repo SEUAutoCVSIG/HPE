@@ -18,7 +18,7 @@ class HPE():
     def __init__(self):
         # Deploy darknet53 model on cooresponding device
         model = darknet("cfg/yolov3-1.cfg", 1)
-        model.load_weight("yolov3-1-1.weights")
+        model.load_weight("yolov3-1.weights")
 
         cuda = torch.cuda.is_available()
         if cuda:
