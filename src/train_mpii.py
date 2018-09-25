@@ -52,7 +52,7 @@ def train(model, FolderPath, Annotation, epochs, batch_size, learn_rate, momentu
     '''
     # Define data loader
     dataset = MpiiDataSet_sig(FolderPath, Annotation)
-    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     # Define optimizer
     optimizer = optim.SGD(model.parameters(), lr=learn_rate, momentum=momentum,
@@ -63,11 +63,11 @@ def train(model, FolderPath, Annotation, epochs, batch_size, learn_rate, momentu
 
     cuda = torch.cuda.is_available()
     Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
-    parts = ['rank', 'rkne', 'rhip',
-             'lhip', 'lkne', 'lank',
-             'pelv', 'thrx', 'neck', 'head',
-             'rwri', 'relb', 'rsho',
-             'lsho', 'lelb', 'lwri']
+    # parts = ['rank', 'rkne', 'rhip',
+    #          'lhip', 'lkne', 'lank',
+    #          'pelv', 'thrx', 'neck', 'head',
+    #          'rwri', 'relb', 'rsho',
+    #          'lsho', 'lelb', 'lwri']
 
     # Train process
     with open('loss_record.txt', 'a+') as fp:
@@ -77,35 +77,18 @@ def train(model, FolderPath, Annotation, epochs, batch_size, learn_rate, momentu
                 target = Variable(target.type(Tensor), requires_grad=False)
                 optimizer.zero_grad()
                 output = model(data)
-
-                # op_np = np.zeros((16, 2), dtype=int)
-                # tg_np = np.zeros((16, 2), dtype=int)
-                # for part in range(16):
-                #     part_output = output[0, part + 16, :, :]
-                #     part_target = target[0, part + 16, :, :]
-                #     if part_output.max() != 0:
-                #         op_np[part][0] = np.where(part_output == part_output.max())[0]
-                #         op_np[part][1] = np.where(part_output == part_output.max())[1]
-                #     if part_target.max() != 0:
-                #         tg_np[part][0] = np.where(part_target == part_target.max())[0]
-                #         tg_np[part][1] = np.where(part_target == part_target.max())[1]
-                # print('target = ', tg_np[0])
-                # print('output = ', op_np[0])
-
+                # target = dataset.get_target(idx)
+                # target = Variable(target.type(Tensor), requires_grad=False)
                 loss = 100*loss_func(output, target)
-                # print(loss)
-                # print(type(loss))
                 loss.backward()
                 optimizer.step()
-                # zero = np.zeros(16)
-                correct = np.zeros((16, 2))
                 correct = if_correct(idx, dataset, output, target, batch_size)
                 correct[:, 1] += 1e-16
                 accuracy = correct[:, 0]/correct[:, 1]
                 recall = np.sum(accuracy)/len(accuracy)
 
                 # Output train info
-                print('[Epoch %d/%d, Batch %d/%d] ' % (epoch+1, epochs, i+1, len(data_loader)), end='')
+                print('[Epoch %d/%d, Batch %d/%d]' % (epoch+1, epochs, i+1, len(data_loader)), end='\t')
                 # for part in range(len(parts)):
                 #     part_target = torch.cat((target[:, part, :, :], target[:, part + 16, :, :]), 1)
                 #     part_output = torch.cat((output[:, part, :, :], output[:, part + 16, :, :]), 1)

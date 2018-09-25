@@ -4,7 +4,7 @@
 
     Author          ：Yu Du
     Email           : 1239988498@qq.com
-    Last edit date  : Tue Sep 20 11:10 2018
+    Last edit date  :  2018
 
 South East University Automation College, 211189 Nanjing China
 '''
@@ -14,7 +14,8 @@ import random
 from torch.utils import data
 import numpy as np
 import torch
-
+import os
+from math import sin, cos, radians
 
 
 def calcul_heatmap(img_width, img_height, c_x, c_y, sigma):
@@ -61,14 +62,19 @@ class Person:
 
     def gen_heatmap(self):
         '''
-        return  : (numpy.ndarray) heatmap(16, 128, 128)
+        return  : (numpy.ndarray) heatmap(16, 64, 64)
         '''
-        heatmap = np.zeros((self.num_part, 128, 128))
-        for part in range(self.num_part):
-            # if not(self.visible[part] == 0 or self.visible[part] == -1):
-            if self.visible[part] != -1:
-                heatmap[part] = calcul_heatmap(128, 128, self.parts[part][0]*self.scale/2, self.parts[part][1]*self.scale/2, 1)
-        return heatmap
+        if self.isFirstLoad:
+            # The origin data must be pre-process first.
+            self.sqrpadding()
+            self.gen_heatmap()
+        else:
+            heatmap = np.zeros((self.num_part, 64, 64))
+            for part in range(self.num_part):
+                if self.visible[part] != -1:
+                    heatmap[part] = calcul_heatmap(64, 64, self.parts[part][0] * self.scale / 4,
+                                                   self.parts[part][1] * self.scale / 4, 1)
+            return heatmap
 
     def sqrpadding(self):
         '''
@@ -85,7 +91,7 @@ class Person:
             self.parts[:, 1] -= y1
         new_height, new_width = img.shape[:2]
         max_ = max(new_width, new_height)
-        self.scale = 256/max_
+        self.scale = 256 / max_
         if new_height > new_width:
             left = (new_height - new_width) // 2
             right = abs(new_height - new_height - left)
@@ -106,42 +112,52 @@ class Person:
             img = cv2.resize(img, (256, 256), interpolation=cv2.INTER_AREA)
         else:
             img = cv2.resize(img, (256, 256), interpolation=cv2.INTER_CUBIC)
-        # self.size = 1280
-        # top = (self.size - new_height) // 2
-        # left = (self.size - new_width) // 2
-        # bottom = self.size - new_height - top
-        # right = self.size - new_width - left
-        # img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(128, 128, 128))
-        # self.parts = self.parts*256/self.max_
-        # self.normalize = self.normalize*256/self.max_
         if self.isFirstLoad:
             self.isFirstLoad = False
         return img
 
     def get_norm(self):
-        return self.normalize*self.scale
+        return self.normalize * self.scale
 
     def get_parts(self):
-        return self.parts*self.scale
+        return self.parts * self.scale
+
+    def get_cropimg(self):
+        deta_x = 0
+        deta_y = 0
+        img = cv2.imread(self.imgname)
+        height, width = img.shape[:2]
+        (x1, y1) = self.coor1
+        (x2, y2) = self.coor2
+        img = img[max(y1, 0):min(y2, height), max(x1, 0):min(x2, width)]
+        if x1 > 0:
+            deta_x = -x1
+        if y1 > 0:
+            deta_y = -y1
+        return img, deta_x, deta_y
+
 
 class MpiiDataSet_sig(data.Dataset):
-    def __init__(self, imageFolderPath, annoPath, if_train=True):
+    '''
+    Containing infomation of images cropped into one person
+    '''
+
+    def __init__(self, imageFolderPath, annoPath, if_train=True, is_augment=False):
         super(MpiiDataSet_sig, self).__init__()
         self.mpii = Mpii(imageFolderPath, annoPath)
         self.num_person = 0
         self.containers = []  # dtype: Person
         self.imageFolderPath = imageFolderPath
         self.if_train = if_train
+        self.is_augment = is_augment
         count = 0
         for imgidx in range(self.mpii.num_img):
-        # for imgidx in range(35):
             for idx_pp in range(self.mpii.num_pp(imgidx)):
                 if self.mpii.isTrain(imgidx):
                     self.add_person(imgidx, idx_pp)
-            #         count += 1
-            # if count >= 1:
-            #     break
-
+                    count += 1
+            if count >= 28000:
+                break
 
     def __getitem__(self, idx):
         '''
@@ -162,12 +178,13 @@ class MpiiDataSet_sig(data.Dataset):
             heatmap = self.containers[idx].gen_heatmap()
         if self.if_train:
             img = img.swapaxes(1, 2).swapaxes(0, 1)
-            img = torch.from_numpy(img).float()/255
+            img = torch.from_numpy(img).float() / 255
             heatmap = torch.from_numpy(heatmap.swapaxes(1, 2)).repeat(2, 1, 1)
             return idx, img, heatmap
         else:
             img_ = img.swapaxes(1, 2).swapaxes(0, 1)
             img_ = torch.from_numpy(img_).float() / 255
+            # heatmap = self.containers[idx].gen_heatmap()
             heatmap = torch.from_numpy(heatmap.swapaxes(1, 2)).repeat(2, 1, 1)
             return idx, img_, img, heatmap
 
@@ -178,7 +195,18 @@ class MpiiDataSet_sig(data.Dataset):
         self.containers += [Person(self.mpii, imgidx, idx_pp)]
         self.num_person += 1
 
-    def get_cvimg(self, idx):
+    def add_person_aug(self, idx):
+        pass
+
+    def get_target(self, idx):
+        target = torch.FloatTensor(len(idx), 32, 128, 128)
+        for i in range(len(idx)):
+            heatmap = self.containers[int(idx[i])].gen_heatmap()
+            heatmap = torch.from_numpy(heatmap.swapaxes(1, 2)).repeat(2, 1, 1)
+            target[i] = heatmap
+        return target
+
+    def get_padimg(self, idx):
         return self.containers[idx].sqrpadding()
 
     def get_parts(self, idx):
@@ -193,6 +221,61 @@ class MpiiDataSet_sig(data.Dataset):
     def get_norm(self, idx):
         return self.containers[idx].get_norm()
 
-class Augment:
-    def __init__(self, dataset):
-        self.FolderPath = dataset.imageFolderPath
+    def get_cropimg(self, idx):
+        return self.containers[idx].get_cropimg()
+
+    def __makedir(self, path):
+        # remove blank
+        path = path.strip()
+        # remove '\\' at the end (for Windows)
+        path = path.rstrip('\\')
+        # remove '/' at the end (for Linux)
+        path = path.rstrip('/')
+        isExist = os.path.exists(path)
+        if not isExist:
+            os.makedirs(path)
+
+    def __saveAugImage(self, idx, img):
+        path = self.imageFolderPath[:-len('images')] + 'images_augmentation/'
+        self.__makedir(path)
+        i = 0
+        while True:
+            imgpath = path + str(idx) + '_' + str(i) + '.jpg'
+            if not os.path.isfile(imgpath):
+                break
+            i += 1
+        cv2.imwrite(imgpath, img)
+        print('Save successfully: ', imgpath)
+
+    def rotate(self, idx, degree, save=False):
+        img, dx, dy = self.get_cropimg()
+        height, width = img.shape[:2]
+        heightNew = int(width * abs(sin(radians(degree))) + height * abs(cos(radians(degree))))
+        widthNew = int(height * abs(sin(radians(degree))) + width * abs(cos(radians(degree))))
+        matRotation = cv2.getRotationMatrix2D((width / 2, height / 2), degree, 1)
+        # I'm working on this step
+        matRotation[0, 2] += (widthNew - width) / 2
+        matRotation[1, 2] += (heightNew - height) / 2
+        img = cv2.warpAffine(img, matRotation, (widthNew, heightNew), borderValue=(128, 128, 128))
+        if save:
+            self.__saveAugImage(idx, img)
+        else:
+            cv2.imshow("imgScaling", img)
+            cv2.waitKey(0)
+        return dx, dy
+
+    def scale(self, idx, scaling, save=False):
+        img, dx, dy = self.get_cropimg()
+        if (scaling >= 1):
+            img = cv2.resize(img, None, fx=scaling, fy=scaling, interpolation=cv2.INTER_CUBIC)
+        elif (scaling <= 0):
+            print('Bad Argument')
+            return
+        else:
+            img = cv2.resize(img, None, fx=scaling, fy=scaling, interpolation=cv2.INTER_AREA)
+        if save:
+            self.__saveAugImage(idx, img)
+        else:
+            cv2.imshow("imgScaling", img)
+            cv2.waitKey(0)
+        return dx, dy

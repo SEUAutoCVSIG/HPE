@@ -2,11 +2,12 @@
 '''
     Created on wed Sept 6 19:34 2018
 
-    Author           : Shaoshu Yang, Heng Tan, Yue Han
+    Author           : Shaoshu Yang, Heng Tan, Yue Han, Yu Du
     Email            : 13558615057@163.com
                        1608857488@qq.com
                        1015985094@qq.com
-    Last edit date   : Sept 9 15:34 2018
+                       1239988498@qq.com
+    Last edit date   : Tue Sept 25 21:07 2018
 
 South East University Automation College, 211189 Nanjing China
 
@@ -565,3 +566,46 @@ def build_target(pred_boxes, target, anchors, num_anchors, num_classes,
                 nCorrect += 1
 
     return nGT, nCorrect, mask, conf_mask, tx, ty, tw, th, tconf, tcls
+
+def draw(window_name, img, coor, thick, key=None):
+    '''
+        Args:
+            window_name: (string)
+            img: (ndarray) image for annotating
+            coor: (list or tuple) shape (16, 2)
+            thick: (int) thick of the line
+            key: (int) the length of time the window stays
+    '''
+    if not ((coor[0][0] == 0 and coor[0][1] == 0) or (coor[1][0] == 0 and coor[1][1] == 0)):
+        img = cv2.line(img, coor[0], coor[1], (181, 102, 60), thick)
+    if not ((coor[1][0] == 0 and coor[1][1] == 0) or (coor[2][0] == 0 and coor[2][1] == 0)):
+        img = cv2.line(img, coor[1], coor[2], (250, 203, 91), thick)
+    if not ((coor[2][0] == 0 and coor[2][1] == 0) or (coor[6][0] == 0 and coor[6][1] == 0)):
+        img = cv2.line(img, coor[2], coor[6], (35, 98, 177), thick)
+    if not ((coor[3][0] == 0 and coor[3][1] == 0) or (coor[6][0] == 0 and coor[6][1] == 0)):
+        img = cv2.line(img, coor[3], coor[6], (35, 98, 177), thick)
+    if not ((coor[3][0] == 0 and coor[3][1] == 0) or (coor[4][0] == 0 and coor[4][1] == 0)):
+        img = cv2.line(img, coor[3], coor[4], (66, 218, 128), thick)
+    if not ((coor[4][0] == 0 and coor[4][1] == 0) or (coor[5][0] == 0 and coor[5][1] == 0)):
+        img = cv2.line(img, coor[4], coor[5], (62, 121, 58), thick)
+    if not ((coor[6][0] == 0 and coor[6][1] == 0) or (coor[7][0] == 0 and coor[7][1] == 0)):
+        img = cv2.line(img, coor[6], coor[7], (23, 25, 118), thick)
+    if not ((coor[7][0] == 0 and coor[7][1] == 0) or (coor[8][0] == 0 and coor[8][1] == 0)):
+        img = cv2.line(img, coor[7], coor[8], (152, 59, 98), thick)
+    if not ((coor[8][0] == 0 and coor[8][1] == 0) or (coor[9][0] == 0 and coor[9][1] == 0)):
+        img = cv2.line(img, coor[8], coor[9], (244, 60, 166), thick)
+    if not ((coor[8][0] == 0 and coor[8][1] == 0) or (coor[12][0] == 0 and coor[12][1] == 0)):
+        img = cv2.line(img, coor[8], coor[12], (244, 59, 166), thick)
+    if not ((coor[11][0] == 0 and coor[11][1] == 0) or (coor[12][0] == 0 and coor[12][1] == 0)):
+        img = cv2.line(img, coor[11], coor[12], (51, 135, 239), thick)
+    if not ((coor[10][0] == 0 and coor[10][1] == 0) or (coor[11][0] == 0 and coor[11][1] == 0)):
+        img = cv2.line(img, coor[10], coor[11], (35, 98, 177), thick)
+    if not ((coor[8][0] == 0 and coor[8][1] == 0) or (coor[13][0] == 0 and coor[13][1] == 0)):
+        img = cv2.line(img, coor[8], coor[13], (244, 59, 166), thick)
+    if not ((coor[13][0] == 0 and coor[13][1] == 0) or (coor[14][0] == 0 and coor[14][1] == 0)):
+        img = cv2.line(img, coor[13], coor[14], (49, 56, 218), thick)
+    if not ((coor[14][0] == 0 and coor[14][1] == 0) or (coor[15][0] == 0 and coor[15][1] == 0)):
+        img = cv2.line(img, coor[14], coor[15], (23, 25, 118), thick)
+    cv2.imshow(window_name, img)
+    if key is not None:
+        cv2.waitKey(key)
