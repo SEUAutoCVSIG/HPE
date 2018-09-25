@@ -12,7 +12,6 @@ from src.dataset.mpii import Mpii
 import cv2
 import random
 from torch.utils import data
-from PIL import Image
 import numpy as np
 import torch
 
@@ -190,3 +189,7 @@ class MpiiDataSet_sig(data.Dataset):
 
     def get_norm(self, idx):
         return self.containers[idx].get_norm()
+
+class Augment:
+    def __init__(self, dataset):
+        self.FolderPath = dataset.imageFolderPath

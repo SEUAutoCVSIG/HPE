@@ -10,20 +10,13 @@ South East University Automation College, 211189 Nanjing China
 '''
 
 from src.model.hourglass import StackedHourglass
-from src.dataset.dataloader import MpiiDataset
 from src.dataset.mpiiLoader import MpiiDataSet_sig
 import torch
 import torch.nn as nn
 import numpy as np
 from torch import optim
-from torch.optim import lr_scheduler
 from torch.autograd import Variable
-import torchvision
-from torchvision import datasets, models
-from torchvision import transforms as T
 from torch.utils.data import DataLoader
-from PIL import Image
-import time
 import os
 from math import sqrt
 
@@ -32,9 +25,9 @@ from math import sqrt
 You need to change the following parameters according to your own condition.
 '''
 # My local path
-FolderPath = 'E:/images'
-Annotation = 'E:/HPE/res/mpii_human_pose_v1_u12_1.mat'
-WeightPath = 'E:/HPE/src/'
+FolderPath = '/Users/midora/Desktop/Python/HPElocal/res/images'
+Annotation = '/Users/midora/Desktop/Python/HPE/res/mpii_human_pose_v1_u12_1.mat'
+WeightPath = 'res/'
 
 '''********************************************************************'''
 

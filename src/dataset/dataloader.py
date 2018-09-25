@@ -14,8 +14,6 @@ from PIL import Image
 import numpy as np
 from torchvision import transforms as T
 import matplotlib.pyplot as plt
-import scipy.io as sio
-import scipy.misc as misc
 from src.dataset.mpii import Mpii
 from src.dataset.mpiiLoader import Person, calcul_heatmap
 import cv2
