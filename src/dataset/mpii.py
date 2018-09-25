@@ -9,8 +9,6 @@
 South East University Automation College, 211189 Nanjing China
 '''
 
-import torch
-from PIL import Image
 import numpy as np
 import scipy.io as sio
 
@@ -39,7 +37,6 @@ class Mpii:
 
     def getimgname(self, idx):
         return str(self.anno['annolist'][0][0][0]['image'][idx][0]['name'][0][0])
-
 
     def isTrain(self, idx):
         '''
