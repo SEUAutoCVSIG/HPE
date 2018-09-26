@@ -62,8 +62,8 @@ def eval_relaxed_pcp(gt_joints, predicted_joints, thresh=0.5):
         raise ValueError('PCP requires 10 sticks. Provided: {}'.format(num_sticks))
     is_matched = np.zeros((num_examples, num_sticks), dtype=int)
 
-    for i in xrange(num_examples):
-        for stick_id in xrange(num_sticks):
+    for i in range(num_examples):
+        for stick_id in range(num_sticks):
             gt_stick_len = np.linalg.norm(gt_joints[i]['sticks'][stick_id, :2] -
                                           gt_joints[i]['sticks'][stick_id, 2:])
             delta_a = np.linalg.norm(predicted_joints[i]['sticks'][stick_id, :2] -
@@ -99,8 +99,8 @@ def eval_strict_pcp(gt_joints, predicted_joints, thresh=0.5):
         raise ValueError('PCP requires 10 sticks. Provided: {}'.format(num_sticks))
     is_matched = np.zeros((num_examples, num_sticks), dtype=int)
 
-    for i in xrange(num_examples):
-        for stick_id in xrange(num_sticks):
+    for i in range(num_examples):
+        for stick_id in range(num_sticks):
             gt_stick_len = np.linalg.norm(gt_joints[i]['sticks'][stick_id, :2] -
                                           gt_joints[i]['sticks'][stick_id, 2:])
             delta_a = np.linalg.norm(predicted_joints[i]['sticks'][stick_id, :2] -
@@ -116,7 +116,7 @@ def eval_strict_pcp(gt_joints, predicted_joints, thresh=0.5):
 def average_pcp_left_right_limbs(pcp_per_stick):
     part_names = ['Head', 'Torso', 'U Arm', 'L Arm', 'U Leg', 'L Leg', 'mean']
     pcp_per_part = pcp_per_stick[:2].tolist() + \
-                   [(pcp_per_stick[i] + pcp_per_stick[i + 4]) / 2 for i in xrange(2, 6)]
+                   [(pcp_per_stick[i] + pcp_per_stick[i + 4]) / 2 for i in range(2, 6)]
     pcp_per_part.append(np.mean(pcp_per_part))
     return pcp_per_part, part_names
 
@@ -166,7 +166,7 @@ def average_pckh_symmetric_joints(dataset_name, pckh_per_joint):
                    'Hip', 'Knee', 'Ankle',
                    'Thorax', 'Pelvis']
     pckh_symmetric_joints = pckh_per_joint[:2].tolist()
-    for i in xrange(2, 8):
+    for i in range(2, 8):
         pckh_symmetric_joints.append((pckh_per_joint[i] + pckh_per_joint[i + 6]) / 2.0)
     pckh_symmetric_joints += pckh_per_joint[14:].tolist()
     return pckh_symmetric_joints, joint_names

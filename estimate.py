@@ -73,7 +73,7 @@ class Estimator:
 
             cv2.waitKey(0)
 
-    def estimate(self, img, bbox):
+    def estimate(self, img, bbox, thresh=0.4):
         '''
             Args:
                 img     : (ndarray) original image got from cv2.imread()
@@ -121,7 +121,7 @@ class Estimator:
         op_np = np.zeros((16, 2), dtype=int)
         for part in range(len(self.parts)):
             part_output = output[0, part + len(self.parts), :, :]
-            if part_output.max() != 0:
+            if part_output.max() >= thresh:
                 op_np[part][0] = np.where(part_output == part_output.max())[0][0]
                 op_np[part][1] = np.where(part_output == part_output.max())[1][0]
         # print('target = ', op_np)

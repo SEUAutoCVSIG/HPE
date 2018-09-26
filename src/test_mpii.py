@@ -31,8 +31,8 @@ def eval_SH():
     '''
 
     # Define data loader
-    dataset = MpiiDataSet_sig(FolderPath, Annotation)
-    data_loader = DataLoader(dataset, batch_size=8, shuffle=True)
+    dataset = MpiiDataSet_sig(FolderPath, Annotation, if_train=False, is_eval=True)
+    data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
     stack_hourglass = StackedHourglass(16)
     if os.path.isfile(weight_file_name):
        stack_hourglass.load_state_dict(torch.load(weight_file_name))
@@ -42,12 +42,13 @@ def eval_SH():
     cuda = torch.cuda.is_available()
     Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
-    # Train process
-    for i, (idx, data, target) in enumerate(data_loader):
-        data = Variable(data.type(Tensor))
-        target = Variable(target.type(Tensor), requires_grad=False)
-        output = model(data)
-        op = get_points(output)
-        tg = get_points(target)
-        eval_pckh(mpii)
-
+    for i in range(10):
+        mAPs = np.zeros((16, 2))
+        for data, target in data_loader:
+            data = Variable(data.type(Tensor))
+            target = Variable(target.type(Tensor), requires_grad=False)
+            output = model(data)
+            op = np.array(get_points(output))
+            tg = np.array(get_points(target))
+            mAPs += eval_pckh('mpii', tg, op, )
+        mAPs /= len(data_loader)
