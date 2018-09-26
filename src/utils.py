@@ -606,3 +606,4 @@ def draw(img, coor, thick):
         img = cv2.line(img, coor[13], coor[14], (49, 56, 218), thick)
     if not ((coor[14][0] == 0 and coor[14][1] == 0) or (coor[15][0] == 0 and coor[15][1] == 0)):
         img = cv2.line(img, coor[14], coor[15], (23, 25, 118), thick)
+    return img

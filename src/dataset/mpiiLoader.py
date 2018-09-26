@@ -156,7 +156,7 @@ class MpiiDataSet_sig(data.Dataset):
                 if self.mpii.isTrain(imgidx):
                     self.add_person(imgidx, idx_pp)
                     count += 1
-            if count >= 28000:
+            if count >= 26112:
                 break
 
     def __getitem__(self, idx):
