@@ -640,7 +640,7 @@ def insert_img(ori_img, ins_img, part, joint):
 
     # Using the size of head to confirm the size of insert-picture
     size = dis(joint[8], joint[9])
-    point[1] += int(size/9)
+    # point[1] += int(size/9)
 
     # The original coordinate system is where the point is annotated.
     ori_height, ori_width = ori_img.shape[:2]
@@ -662,3 +662,14 @@ def insert_img(ori_img, ins_img, part, joint):
             if not(ins_img[y][x] >= white).all():
                 ori_img[y + max(y1, 0)][x + max(x1, 0)] = ins_img[y][x]
 
+def get_points(heatmap):
+    for part in range(16):
+        pt_np = np.zeros((16, 2), dtype=int)
+        part_target = heatmap[0, part + 16, :, :]
+        if part_target.max() >= 0.4:
+            pt_np[part][0] = np.where(part_target == part_target.max())[0][0]
+            pt_np[part][1] = np.where(part_target == part_target.max())[1][0]
+    pt = [[0, 0]] * 16
+    for part in range(16):
+        pt[part] = int(pt_np[part][0] * 4), int(pt_np[part][1] * 4)
+    return pt

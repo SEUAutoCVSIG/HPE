@@ -1,4 +1,4 @@
 
-import mpii
-import pcp_pck
+import poseevaluation.mpii
+import poseevaluation.pcp_pck
 

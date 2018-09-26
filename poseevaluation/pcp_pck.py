@@ -116,7 +116,7 @@ def eval_strict_pcp(gt_joints, predicted_joints, thresh=0.5):
 def average_pcp_left_right_limbs(pcp_per_stick):
     part_names = ['Head', 'Torso', 'U Arm', 'L Arm', 'U Leg', 'L Leg', 'mean']
     pcp_per_part = pcp_per_stick[:2].tolist() + \
-                   [(pcp_per_stick[i] + pcp_per_stick[i + 4]) / 2 for i in xrange(2, 6)]
+                   [(pcp_per_stick[i] + pcp_per_stick[i + 4]) / 2 for i in range(2, 6)]
     pcp_per_part.append(np.mean(pcp_per_part))
     return pcp_per_part, part_names
 

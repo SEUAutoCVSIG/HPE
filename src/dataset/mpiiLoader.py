@@ -142,21 +142,23 @@ class MpiiDataSet_sig(data.Dataset):
     Containing infomation of images cropped into one person
     '''
 
-    def __init__(self, imageFolderPath, annoPath, if_train=True, is_augment=False):
+    def __init__(self, imageFolderPath, annoPath, if_train=True, is_eval=False, is_augment=False):
         super(MpiiDataSet_sig, self).__init__()
         self.mpii = Mpii(imageFolderPath, annoPath)
         self.num_person = 0
         self.containers = []  # dtype: Person
         self.imageFolderPath = imageFolderPath
         self.if_train = if_train
+        self.is_eval = is_eval
         self.is_augment = is_augment
+        self.train_len =26112
         count = 0
         for imgidx in range(self.mpii.num_img):
             for idx_pp in range(self.mpii.num_pp(imgidx)):
                 if self.mpii.isTrain(imgidx):
                     self.add_person(imgidx, idx_pp)
                     count += 1
-            if count >= 26112:
+            if count >= self.train_len and if_train:
                 break
 
     def __getitem__(self, idx):
@@ -168,6 +170,8 @@ class MpiiDataSet_sig(data.Dataset):
                 obj[idx] == obj.__getitem__(idx)
         (e.g. obj   : MpiiDataset[idx] return PIL Image, heatmap or numpy.ndarray, heatmap)
         '''
+        if self.is_eval:
+            idx += self.train_len
         try:
             img = self.containers[idx].sqrpadding()
             heatmap = self.containers[idx].gen_heatmap()
@@ -186,10 +190,16 @@ class MpiiDataSet_sig(data.Dataset):
             img_ = torch.from_numpy(img_).float() / 255
             # heatmap = self.containers[idx].gen_heatmap()
             heatmap = torch.from_numpy(heatmap.swapaxes(1, 2)).repeat(2, 1, 1)
-            return idx, img_, img, heatmap
+            if self.is_eval:
+                return img_, heatmap
+            else:
+                return idx, img_, img, heatmap
 
     def __len__(self):
-        return self.num_person
+        if self.is_eval:
+            return self.num_person-self.train_len
+        else:
+            return self.num_person
 
     def add_person(self, imgidx, idx_pp):
         self.containers += [Person(self.mpii, imgidx, idx_pp)]
