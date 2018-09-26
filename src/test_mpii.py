@@ -54,4 +54,5 @@ def eval_SH():
         mAPs /= len(data_loader)
         with open('SH_mAP.txt', 'a+') as fp:
             fp.write('thresh:   %f  mAP     %f\n' %(0.05*i, mAPs))
+        print('thresh:   %f  mAP     %f' %(0.05*i, mAPs))
 
