@@ -28,7 +28,7 @@ class HPE():
 
         # Deploy stacked hourglass model
         stackedhourglass = StackedHourglass(16)
-        stackedhourglass.load_state_dict(torch.load("stacked_hourlgass.pkl"))
+        stackedhourglass.load_state_dict(torch.load("stacked_hourglass.pkl"))
 
         cuda = torch.cuda.is_available()
         if cuda:
@@ -91,15 +91,40 @@ class HPE():
 
         return img
 
+    def single_pose_estimation(self):
+        cap = cv2.VideoCapture(0)
+
+        while 1:
+            ret, frame = cap.read()
+            try:
+                # Geting dimensions
+                frame_h, frame_w = frame.shape[0], frame.shape[1]
+
+                estim = self.estimator.estimate(frame, [0, 0, frame_w, frame_h])
+
+                # Draw key points
+                draw(frame, estim, 2)
+
+                # Press 'q' to exit
+                cv2.imshow("target", frame)
+                if cv2.waitKey(100) & 0xFF == ord('q'):
+                    break
+
+            except:
+                cv2.imshow("target", frame)
+                if cv2.waitKey(100) & 0xFF == ord('q'):
+                    break
+
+        cap.release()
+
     def pose_estimate(self):
         cap = cv2.VideoCapture(0)
 
         while 1:
             ret, frame = cap.read()
             try:
-                # Geting dimensions, normalization and transforming
+                # Geting dimensions
                 frame_h, frame_w = frame.shape[0], frame.shape[1]
-                img = torch.FloatTensor(frame[:, :, ::-1].transpose(2, 0, 1).copy()).div(255.).unsqueeze(0)
 
                 # Making prediction
                 prediction = self.detector.detect(frame)[..., :4]
@@ -120,7 +145,7 @@ class HPE():
                         prediction_[2*i + 1] = prediction_[2*i + 1] if prediction_[2*i + 1] >= 0 else 0
                         prediction_[2*i + 1] = prediction_[2*i + 1] if prediction_[2*i + 1] <= frame_w else frame_w
 
-                    estimation.append(self.estimator.estimate(img, prediction_))
+                    estimation.append(self.estimator.estimate(frame, prediction_))
 
                 # Draw key points
                 for estimation_ in estimation:
@@ -148,6 +173,60 @@ class HPE():
         mpii = MpiiDataSet_sig('D:/ShaoshuYang/MPII/', 'D:/ShaoshuYang/HPE/res/mpii_human_pose_v1_u12_1.mat')
         self.estimator.tg_check(mpii)
 
+    def pikachu(self, pikachu_dir="res/pikachu.jpg"):
+        '''
+            Args:
+                 pikachu_dir        : (string) directory to pikachu image
+            Returns:
+                 ***
+        '''
+        pikachu = cv2.imread(pikachu_dir)
+        cap = cv2.VideoCapture(0)
+
+        while 1:
+            ret, frame = cap.read()
+            try:
+                # Geting dimensions
+                frame_h, frame_w = frame.shape[0], frame.shape[1]
+
+                # Making prediction
+                prediction = self.detector.detect(frame)[..., :4]
+
+                # Prepare container for key point coordinates
+                estimation = []
+
+                # Get estimation
+                for prediction_ in prediction:
+                    prediction_ = list(map(int, prediction_))
+
+                    # Coordinates shall not exceed the boundary of origin image
+                    for i in range(2):
+                        prediction_[2 * i] = prediction_[2 * i] if prediction_[2 * i] >= 0 else 0
+                        prediction_[2 * i] = prediction_[2 * i] if prediction_[2 * i] <= frame_w else frame_w
+
+                    for i in range(2):
+                        prediction_[2 * i + 1] = prediction_[2 * i + 1] if prediction_[2 * i + 1] >= 0 else 0
+                        prediction_[2 * i + 1] = prediction_[2 * i + 1] if prediction_[
+                                                                               2 * i + 1] <= frame_w else frame_w
+
+                    estimation.append(self.estimator.estimate(frame, prediction_))
+
+                # Draw key points
+                for estimation_ in estimation:
+                    insert_img(frame, pikachu, 'head', estimation_)
+
+                # Press 'q' to exit
+                cv2.imshow("target", frame)
+                if cv2.waitKey(100) & 0xFF == ord('q'):
+                    break
+
+            except:
+                cv2.imshow("target", frame)
+                if cv2.waitKey(100) & 0xFF == ord('q'):
+                    break
+
+        cap.release()
+
 if __name__ == '__main__':
     test = HPE()
-    test.human_det()
+    test.single_pose_estimate()
