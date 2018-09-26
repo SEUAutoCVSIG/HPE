@@ -641,7 +641,7 @@ def insert_img(ori_img, ins_img, part, joint):
 
     # Using the size of head to confirm the size of insert-picture
     size = dis(joint[8], joint[9])
-    point[1] += int(size/9)
+    # point[1] += int(size/9)
 
     # The original coordinate system is where the point is annotated.
     ori_height, ori_width = ori_img.shape[:2]
