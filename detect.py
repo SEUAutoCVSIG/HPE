@@ -81,7 +81,7 @@ class detector():
         prediction[:, [0, 2]] *= img_w/new_w
         prediction[:, [1, 3]] *= img_h/new_h
 
-        return prediction[..., :4]
+        return prediction
 
     def detect_test(self, img, waitkey):
         '''

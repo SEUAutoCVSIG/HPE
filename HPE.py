@@ -15,7 +15,7 @@ from src.utils import *
 from src.dataset.coco  import COCO
 from src.dataset.mpiiLoader import MpiiDataSet_sig
 from detect import detector
-from estimate import estimator
+from estimate import Estimator
 
 import torch
 import cv2
@@ -59,7 +59,7 @@ class HPE():
             ret, frame = cap.read()
             try:
                 # Making prediction
-                prediction = self.detector.detect(frame)
+                prediction = self.detector.detect(frame)[..., :4]
 
                 # Drawing bounding-box
                 self.draw_bbox(prediction, frame)
@@ -102,7 +102,7 @@ class HPE():
                 img = torch.FloatTensor(frame[:, :, ::-1].transpose(2, 0, 1).copy()).div(255.).unsqueeze(0)
 
                 # Making prediction
-                prediction = self.detector.detect(frame)
+                prediction = self.detector.detect(frame)[..., :4]
 
                 # Prepare container for key point coordinates
                 estimation = []
