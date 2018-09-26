@@ -38,7 +38,7 @@ class HPE():
         yolov3.eval()
 
         self.detector = detector(yolov3)
-        self.estimator = estimator(stackedhourglass)
+        self.estimator = Estimator(stackedhourglass)
 
     # Capture the frount camera
     def video_cap(self):
@@ -98,7 +98,7 @@ class HPE():
             ret, frame = cap.read()
             try:
                 # Geting dimensions, normalization and transforming
-                img_h, img_w = frame.shape[0], frame.shape[1]
+                frame_h, frame_w = frame.shape[0], frame.shape[1]
                 img = torch.FloatTensor(frame[:, :, ::-1].transpose(2, 0, 1).copy()).div(255.).unsqueeze(0)
 
                 # Making prediction
@@ -112,15 +112,15 @@ class HPE():
                     prediction_ = list(map(int, prediction_))
 
                     # Coordinates shall not exceed the boundary of origin image
-                    for xcoord in prediction_[::2]:
-                        xcoord = xcoord if xcoord >= 0 else 0
-                        xcoord = xcoord if xcoord <= img_w else img_w
+                    for i in range(2):
+                        prediction_[2*i] = prediction_[2*i] if prediction_[2*i] >= 0 else 0
+                        prediction_[2*i] = prediction_[2*i] if prediction_[2*i] <= frame_w else frame_w
 
-                    for ycoord in prediction_[1::2]:
-                        ycoord = ycoord if ycoord >=0 else 0
-                        ycoord = ycoord if ycoord <= img_h else img_h
+                    for i in range(2):
+                        prediction_[2*i + 1] = prediction_[2*i + 1] if prediction_[2*i + 1] >= 0 else 0
+                        prediction_[2*i + 1] = prediction_[2*i + 1] if prediction_[2*i + 1] <= frame_w else frame_w
 
-                    estimation.append(estimator.estimate(img, prediction_))
+                    estimation.append(self.estimator.estimate(img, prediction_))
 
                 # Draw key points
                 for estimation_ in estimation:
