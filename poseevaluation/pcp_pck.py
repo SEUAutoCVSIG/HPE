@@ -141,14 +141,14 @@ def eval_pckh(dataset_name, gt_joints, predicted_joints, thresh=0.5):
 
     is_matched = np.zeros((num_examples, num_joints), dtype=int)
 
-    for i in xrange(num_examples):
+    for i in range(num_examples):
         if gt_joints[i]['joints'].shape != (num_joints, 2):
             raise ValueError('MPII::PCKh requires 16 joints with 2D coordinates for each.'
                              ' Person {}: provided joints shape: {}'.format(i, gt_joints[0]['joints'].shape))
         head_id = 0
         gt_head_len = np.linalg.norm(gt_joints[i]['sticks'][head_id, :2] -
                                      gt_joints[i]['sticks'][head_id, 2:])
-        for joint_id in xrange(num_joints):
+        for joint_id in range(num_joints):
             delta = np.linalg.norm(predicted_joints[i]['joints'][joint_id] -
                                    gt_joints[i]['joints'][joint_id]) / gt_head_len
 
