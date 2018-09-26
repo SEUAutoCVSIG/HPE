@@ -4,7 +4,7 @@
 
     Author           : Shaoshu Yang
     Email            : 13558615057@163.com
-    Last edit date   : Sept 6 23:47 2018
+    Last edit date   : Sept 25 23:28 2018
 
 South East University Automation College, 211189 Nanjing China
 
@@ -231,15 +231,18 @@ def create_modules(module_defs):
 
         elif module_def["type"] == "yolo":
             anchor_idxs = [int(x) for x in module_def["mask"].split(",")]
+
             # Extract anchors
             anchors = [int(x) for x in module_def["anchors"].split(",")]
             anchors = [(anchors[i], anchors[i+1]) for i in range(0, len(anchors),2)]
             anchors = [anchors[i] for i in anchor_idxs]
             num_classes = int(module_def['classes'])
             img_height = int(hyperparams['height'])
+
             # Define detection layer
             yolo_layer = YOLOLayer(anchors, num_classes, img_height)
             modules.add_module('yolo_%d' % i, yolo_layer)
+
         # Register module list and number of output filters
         module_list.append(modules)
         output_filters.append(filters)
@@ -285,6 +288,7 @@ class darknet(nn.Module):
                     x, *losses = module[0](x, targets)
                     for name, loss in zip(self.loss_names, losses):
                         self.losses[name] += loss
+
                 # Test phase: Get detections
                 else:
                     x = module(x)

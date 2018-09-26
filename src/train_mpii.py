@@ -25,9 +25,9 @@ from math import sqrt
 You need to change the following parameters according to your own condition.
 '''
 # My local path
-FolderPath = '/Users/midora/Desktop/Python/HPElocal/res/images'
-Annotation = '/Users/midora/Desktop/Python/HPE/res/mpii_human_pose_v1_u12_1.mat'
-WeightPath = 'res/'
+FolderPath = 'D:/ShaoshuYang/HPE/MPII/images'
+Annotation = 'D:/ShaoshuYang/HPE/res/mpii_human_pose_v1_u12_1.mat'
+WeightPath = 'D:/ShaoshuYang/HPE/src/'
 
 '''********************************************************************'''
 
@@ -128,9 +128,6 @@ def if_correct(idx, dataset, output, target, batch_size):
                 if sqrt(dis[part]) <= norm/10:
                     correct[part, 0] += 1
     return correct
-
-
-
 
 if __name__ == '__main__':
     weight_file_name = WeightPath+"stacked_hourglass.pkl"
