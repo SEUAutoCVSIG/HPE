@@ -635,13 +635,13 @@ def insert_img(ori_img, ins_img, part, joint):
                   'lsho', 'lelb', 'lwri']
     if isinstance(part, str):
         part = parts.index(part)
-    point = joint[part]
-
+    point = list(joint[part])
     # Image has been sharpened is better
     white = np.array([245, 245, 245])
 
     # Using the size of head to confirm the size of insert-picture
     size = dis(joint[8], joint[9])
+    point[1] += int(size/9)
 
     # The original coordinate system is where the point is annotated.
     ori_height, ori_width = ori_img.shape[:2]
