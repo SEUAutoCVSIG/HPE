@@ -36,46 +36,77 @@ def test(model, root, list_dir, batch_size):
     '''
     # Define data loader
     data_loader = torch.utils.data.DataLoader(COCO(root, list_dir), batch_size=
-                                              batch_size, shuffle=True)
+                                              batch_size, shuffle=False)
 
     cuda = torch.cuda.is_available()
     Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
     losses = []
     recall = []
+    precision = []
 
     # Test process
     for i, (canvas, target) in enumerate(data_loader):
         canvas = Variable(canvas.type(Tensor))
         target = Variable(target.type(Tensor), requires_grad=False)
 
-        loss = model(canvas, target)
         prediction = model(canvas)
-        prediction = non_max_suppression(prediction, 1)
-        prediction = prediction[..., :4]
+        loss = model(canvas, target)
+        prediction = non_max_suppression(prediction, 80, conf_thres=0.8, nms_thres=0.4)
 
-        target[:, 1:] *= 416
-        target[:, 1] -= target[:, 3]/2
-        target[:, 2] -= target[:, 4]/2
-        target[:, 3] += target[:, 1]
-        target[:, 4] += target[:, 2]
+        try:
+            pred_box = []
+            for prediction_ in prediction[0]:
+                if prediction_[6] == 0:
+                    pred_box.append(np.array(prediction_[:4]))
 
+            prediction = np.array(pred_box)
+        except:
+            precision.append(0.)
+            continue
 
+        # Transform target to top-left and bottom-right coordinates
+        target[..., 1:] *= 416
+        target[..., 1] -= target[..., 3]/2
+        target[..., 2] -= target[..., 4]/2
+        target[..., 3] += target[..., 1]
+        target[..., 4] += target[..., 2]
+
+        nCorrect = 0.
+        nTotal = float(prediction.shape[0])
+
+        for target_ in target[0]:
+            if sum(target_) == 0:
+                break
+
+            # Get b-box IOU
+            gt_box = torch.FloatTensor(np.array([target_[1], target_[2], target_[3], target_[4]])).unsqueeze(0)
+            try:
+                IOU = bbox_IOU(gt_box, torch.FloatTensor(prediction), x1y1x2y2=True)
+            except:
+                break
+
+            max, best_n = torch.max(IOU, 0)
+            if max > 0.5:
+                nCorrect += 1.
+                prediction = np.delete(prediction, best_n, 0)
+
+        precision.append(nCorrect/(nTotal + 1e-16))
         # Output train info
         print('[Batch %d/%d] [Losses: x %f, y %f, w %f, h %f, conf %f, \
-                                                cls %f, total %f, recall: %.5f]' %
+                                                cls %f, total %f, recall: %.5f, precision: %.5f]' %
                                     (i, len(data_loader),
            model.losses['x'], model.losses['y'], model.losses['w'],
            model.losses['h'], model.losses['conf'], model.losses['cls'],
-           loss.item(), model.losses['recall']))
+           loss.item(), model.losses['recall'], precision[-1]))
         losses.append(loss.item())
         recall.append(model.losses['recall'])
 
-    print("loss: %f, recall %f"%(sum(losses)/len(losses), sum(recall)/len(recall)))
+    print("loss: %f, recall: %f, mAP: %f"%(sum(losses)/len(losses), sum(recall)/len(recall),
+                                                            sum(precision)/len(precision)))
 
-def precision()
 if __name__ == '__main__':
-    model = darknet("D:/ShaoshuYang/HPE/cfg/yolov3-1.cfg", 1)
-    model.load_weight("D:/ShaoshuYang/HPE/src/yolov3-1.weights")
+    model = darknet("D:/ShaoshuYang/HPE/cfg/yolov3.cfg", 1)
+    model.load_weight("D:/ShaoshuYang/HPE/yolov3.weights")
 
     if torch.cuda.is_available():
         model.cuda()

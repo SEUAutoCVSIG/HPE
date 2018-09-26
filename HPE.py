@@ -148,6 +148,18 @@ class HPE():
         mpii = MpiiDataSet_sig('D:/ShaoshuYang/MPII/', 'D:/ShaoshuYang/HPE/res/mpii_human_pose_v1_u12_1.mat')
         self.estimator.tg_check(mpii)
 
+    def pikachu(self, pikachu_dir):
+        '''
+            Args:
+                 pikachu_dir      : (string) directory to pikachu image
+            Returns:
+                 ***
+        '''
+
+        pikachu = cv2.imread(pikachu_dir)
+
+        insert_img()
+
 if __name__ == '__main__':
     test = HPE()
     test.human_det()
