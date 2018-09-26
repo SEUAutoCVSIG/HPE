@@ -4,18 +4,21 @@
 
     Author           : Shaoshu Yang
     Email            : 13558615057@163.com
-    Last edit date   : Sept 20 11:32 2018
+    Last edit date   : Sept 25 23:26 2018
 
 South East University Automation College, 211189 Nanjing China
 '''
 
 from src.model.darknet import darknet
 from src.model.hourglass import StackedHourglass
+from src.utils import *
+from src.dataset.coco  import COCO
+from src.dataset.mpiiLoader import MpiiDataSet_sig
 from detect import detector
 from estimate import estimator
+
 import torch
 import cv2
-from src.utils import *
 
 class HPE():
     def __init__(self):
@@ -88,27 +91,40 @@ class HPE():
 
         return img
 
-    def draw_keypoints(self, prediction, img):
-        '''
-            Args:
-                 prediction       : (list) list that record the coordinates of key points
-                 img              : (ndarray) original image
-            Returns:
-                 Image with key points
-        '''
-        draw("estimation", img, prediction, 3, 0)
-
     def pose_estimate(self):
         cap = cv2.VideoCapture(0)
 
         while 1:
             ret, frame = cap.read()
             try:
+                # Geting dimensions, normalization and transforming
+                img_h, img_w = frame.shape[0], frame.shape[1]
+                img = torch.FloatTensor(frame[:, :, ::-1].transpose(2, 0, 1).copy()).div(255.).unsqueeze(0)
+
                 # Making prediction
                 prediction = self.detector.detect(frame)
 
-                for prediction_ in prediction:
+                # Prepare container for key point coordinates
+                estimation = []
 
+                # Get estimation
+                for prediction_ in prediction:
+                    prediction_ = list(map(int, prediction_))
+
+                    # Coordinates shall not exceed the boundary of origin image
+                    for xcoord in prediction_[::2]:
+                        xcoord = xcoord if xcoord >= 0 else 0
+                        xcoord = xcoord if xcoord <= img_w else img_w
+
+                    for ycoord in prediction_[1::2]:
+                        ycoord = ycoord if ycoord >=0 else 0
+                        ycoord = ycoord if ycoord <= img_h else img_h
+
+                    estimation.append(estimator.estimate(img, prediction_))
+
+                # Draw key points
+                for estimation_ in estimation:
+                    draw(frame, estimation_, 2)
 
                 # Press 'q' to exit
                 cv2.imshow("target", frame)
@@ -122,6 +138,15 @@ class HPE():
 
         cap.release()
 
+    def show_coco(self):
+        # Display coco dataset and its annotations
+        coco = COCO('D:/ShaoshuYang/COCO/', 'anno_list.txt')
+        coco.show_dataset()
+
+    def show_mpii(self):
+        # Display mpii dataset and its annotaions
+        mpii = MpiiDataSet_sig('D:/ShaoshuYang/MPII/', 'D:/ShaoshuYang/HPE/res/mpii_human_pose_v1_u12_1.mat')
+        self.estimator.tg_check(mpii)
 
 if __name__ == '__main__':
     test = HPE()
