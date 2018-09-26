@@ -12,8 +12,9 @@ South East University Automation College, 211189 Nanjing China
 import cv2
 from src.train_mpii import *
 from copy import deepcopy
-from src.utils import draw
+from src.utils import draw, insert_img
 import torch
+import time
 
 
 class Estimator:
@@ -41,7 +42,6 @@ class Estimator:
             # Using heatmap of ground truth
             img_tg = deepcopy(img)
             output = self.model(data)
-            print(output.shape)
             op_np = np.zeros((16, 2), dtype=int)
             tg_np = np.zeros((16, 2), dtype=int)
             for part in range(len(self.parts)):
@@ -65,6 +65,8 @@ class Estimator:
             draw(img_gt, gt, 3)
             draw(img_tg, tg, 3)
 
+
+
             cv2.imshow('Estimator', img)
             cv2.imshow('Ground Truth', img_gt)
             cv2.imshow('Target', img_tg)
@@ -74,7 +76,7 @@ class Estimator:
     def estimate(self, img, bbox):
         '''
             Args:
-                img     : (FloatTensor)  image[0, 1]
+                img     : (ndarray) original image got from cv2.imread()
                 bbox    : (list) [x1, y1, x2, y2]
             Return:
                 tg      :(list 16)(tuple 2) joint point of original image
@@ -146,10 +148,17 @@ class Estimator:
             tg = [[0, 0]] * len(self.parts)
             for part in range(len(self.parts)):
                 tg[part] = int(tg_np[part][0] * 4), int(tg_np[part][1] * 4)
-            draw(img, tg, 3)
-
+            # draw(img, tg, 3)
+            insert = cv2.imread('/Users/midora/Downloads/01300542846491152239525449451.jpg')
+            start = time.time()
+            insert_img(img, insert, 9, tg)
+            t = time.time() - start
+            print(t)
             cv2.imshow('Target', img)
             cv2.waitKey(0)
+
+    def AR_beta(self, dataset):
+        insert = cv2.imread('/Users/midora/Downloads/01300542846491152239525449451.jpg')
 
 
 if __name__ == "__main__":
@@ -165,5 +174,5 @@ if __name__ == "__main__":
 
     # Estimator
     estimator = Estimator(model)
-    estimator.test(dataset)
-    # estimator.tg_check(dataset)
+    # estimator.test(dataset)
+    estimator.tg_check(dataset)
