@@ -91,7 +91,7 @@ class HPE():
 
         return img
 
-    def single_pose_estimation(self):
+    def single_pose_estimate(self):
         cap = cv2.VideoCapture(0)
 
         while 1:
@@ -100,7 +100,7 @@ class HPE():
                 # Geting dimensions
                 frame_h, frame_w = frame.shape[0], frame.shape[1]
 
-                estim = self.estimator.estimate(frame, [0, 0, frame_w, frame_h])
+                estim = self.estimator.estimate(frame, [0, 0, frame_w, frame_h], thresh=0.2)
 
                 # Draw key points
                 draw(frame, estim, 2)
@@ -145,7 +145,7 @@ class HPE():
                         prediction_[2*i + 1] = prediction_[2*i + 1] if prediction_[2*i + 1] >= 0 else 0
                         prediction_[2*i + 1] = prediction_[2*i + 1] if prediction_[2*i + 1] <= frame_w else frame_w
 
-                    estimation.append(self.estimator.estimate(frame, prediction_))
+                    estimation.append(self.estimator.estimate(frame, prediction_, thresh=0.2))
 
                 # Draw key points
                 for estimation_ in estimation:

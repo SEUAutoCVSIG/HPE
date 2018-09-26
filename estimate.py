@@ -117,6 +117,10 @@ class Estimator:
         new_img = new_img.swapaxes(1, 2).swapaxes(0, 1)
         new_img = torch.from_numpy(new_img).float() / 255
         data = new_img.unsqueeze(0)
+
+        if torch.cuda.is_available():
+            data = data.cuda()
+
         output = self.model(data)
         op_np = np.zeros((16, 2), dtype=int)
         for part in range(len(self.parts)):
