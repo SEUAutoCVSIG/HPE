@@ -125,7 +125,7 @@ class Estimator:
         op_np = np.zeros((16, 2), dtype=int)
         for part in range(len(self.parts)):
             part_output = output[0, part + len(self.parts), :, :]
-            if part_output.max() >= thresh:
+            if part_output.max() != 0:# and part_output.max() >= thresh:
                 op_np[part][0] = np.where(part_output == part_output.max())[0][0]
                 op_np[part][1] = np.where(part_output == part_output.max())[1][0]
         # print('target = ', op_np)

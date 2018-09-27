@@ -167,8 +167,8 @@ class HPE_demo():
         cap = cv2.VideoCapture(0)
 
         while 1:
-            ret, frame = cap.read()
-            #frame = cv2.imread('data/samples/15.jpg')
+            #ret, frame = cap.read()
+            frame = cv2.imread('data/samples/messi.jpg')
             out_img = frame.copy()
             try:
                 # Geting dimensions, normalization and transforming
@@ -274,8 +274,8 @@ class HPE_demo():
         cap = cv2.VideoCapture(0)
 
         while 1:
-            ret, frame = cap.read()
-            # frame = cv2.imread('data/samples/15.jpg')
+            # ret, frame = cap.read()
+            frame = cv2.imread('data/samples/07.jpg')
             out_img = frame.copy()
             try:
                 # Geting dimensions, normalization and transforming
@@ -368,7 +368,6 @@ class HPE_demo():
 
         cap.release()
 
-
 if __name__ == '__main__':
     test = HPE_demo()
-    test.pikachu()
+    test.pose_estimate()
