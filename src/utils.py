@@ -626,7 +626,6 @@ def dis(pt1, pt2):
     dy = pt1[1] - pt2[1]
     return abs((dx ** 2 + dy ** 2) ** 0.5)
 
-
 def insert_img(ori_img, ins_img, part, joint):
     parts = ['rank', 'rkne', 'rhip',
                   'lhip', 'lkne', 'lank',
