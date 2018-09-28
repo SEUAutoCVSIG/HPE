@@ -20,6 +20,7 @@ import demo
 
 import torch
 import cv2
+import time
 
 class HPE_demo():
     def __init__(self):
@@ -167,13 +168,14 @@ class HPE_demo():
         cap = cv2.VideoCapture(0)
 
         while 1:
-            #ret, frame = cap.read()
-            frame = cv2.imread('data/samples/messi.jpg')
+            ret, frame = cap.read()
+            #frame = cv2.imread('data/samples/messi.jpg')
             out_img = frame.copy()
             try:
                 # Geting dimensions, normalization and transforming
                 frame_h, frame_w = frame.shape[0], frame.shape[1]
 
+                begin = time.clock()
                 # Making prediction
                 prediction = self.detector.detect(frame)
 
@@ -247,8 +249,10 @@ class HPE_demo():
 
                     draw(out_img, coord, 2)
 
+                end = time.clock()
                 # Press 'q' to exit
                 cv2.imshow("target", out_img)
+                print(end - begin)
                 if cv2.waitKey(100) & 0xFF == ord('q'):
                     break
 
