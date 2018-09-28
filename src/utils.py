@@ -674,8 +674,8 @@ def insert_img(ori_img, ins_img, part, joint):
                 ori_img[y + max(y1, 0)][x + max(x1, 0)] = ins_img[y][x]
 
 def get_points(heatmap):
+    pt_np = np.zeros((16, 2), dtype=int)
     for part in range(16):
-        pt_np = np.zeros((16, 2), dtype=int)
         part_target = heatmap[0, part + 16, :, :]
         if part_target.max() >= 0.4:
             pt_np[part][0] = np.where(part_target == part_target.max())[0][0]
@@ -684,3 +684,20 @@ def get_points(heatmap):
     for part in range(16):
         pt[part] = int(pt_np[part][0] * 4), int(pt_np[part][1] * 4)
     return pt
+
+def get_points_multi(heatmap):
+    '''
+    Args:
+        heatmap :(tensor) shape(batch_size, 32, 64, 64)
+    Return  :
+        pt_np   :(ndarray) shape(batch_size, 16, 2)
+    '''
+    num_pp = heatmap.shape[0]
+    pt_np = np.zeros((num_pp, 16, 2), dtype=int)
+    for person in range(num_pp):
+        for part in range(16):
+            part_target = heatmap[person, part + 16, :, :]
+            if part_target.max() >= 0.05:
+                pt_np[person][part][0] = np.where(part_target == part_target.max())[0][0]
+                pt_np[person][part][1] = np.where(part_target == part_target.max())[1][0]
+    return pt_np

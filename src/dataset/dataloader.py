@@ -70,13 +70,12 @@ class MpiiDataset(data.Dataset):
         return: PIL Image
         obj[idx] == obj.__getitem__(idx) (e.g. obj: MpiiDataset[idx] return PIL Image type)
         '''
-        try:
-            PILimage = self.sqrpadding(idx)
-        except:
-            # If failed to load the pointed image, using a random image
-            new_idx = random.randint(0, self.num_img - 1)
-            PILimage = self.sqrpadding(new_idx)
-        return PILimage.resize((512, 512), Image.ANTIALIAS), idx
+        dir = self.getfullpath(idx)
+        num_pp = self.containers[idx].num_pp
+        gt = np.zeros((num_pp, 16, 2),dtype=int)
+        for pp in range(num_pp):
+            gt[pp] = self.containers[idx].people[pp].parts
+        return dir, num_pp, gt
 
     def __len__(self):
         return self.num_img

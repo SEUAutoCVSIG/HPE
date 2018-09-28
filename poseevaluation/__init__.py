@@ -1,4 +1,4 @@
 
-import poseevaluation.mpii
-import poseevaluation.pcp_pck
+from poseevaluation.mpii import *
+from poseevaluation.pcp_pck import *
 

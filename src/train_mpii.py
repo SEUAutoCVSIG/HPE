@@ -25,9 +25,9 @@ from math import sqrt
 You need to change the following parameters according to your own condition.
 '''
 # My local path
-FolderPath = 'D:/ShaoshuYang/HPE/MPII/images'
-Annotation = 'D:/ShaoshuYang/HPE/res/mpii_human_pose_v1_u12_1.mat'
-WeightPath = 'D:/ShaoshuYang/HPE/src/'
+FolderPath = '/Users/midora/Desktop/Python/HPElocal/res/images'
+Annotation = '/Users/midora/Desktop/Python/HPE/res/mpii_human_pose_v1_u12_1.mat'
+WeightPath = 'src/'
 
 '''********************************************************************'''
 
