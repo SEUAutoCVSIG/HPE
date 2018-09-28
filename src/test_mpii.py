@@ -9,10 +9,10 @@
 South East University Automation College, 211189 Nanjing China
 '''
 from src.train_mpii import *
-from src.utils import get_points
+from src.utils import get_points, get_points_multi
 from poseevaluation.pcp_pck import *
 
-def eval_SH():
+def eval_SH(weight_file_name):
     '''
         Args:
              model        : (nn.Module) untrained darknet
@@ -47,12 +47,23 @@ def eval_SH():
         for data, target in data_loader:
             data = Variable(data.type(Tensor))
             target = Variable(target.type(Tensor), requires_grad=False)
-            output = model(data)
-            op = np.array(get_points(output))
-            tg = np.array(get_points(target))
+            output = stack_hourglass(data)
+            op = get_points_multi(output)
+            tg = get_points_multi(target)
+            print(op.shape[1:])
+            print(tg.shape)
+            print(op)
+            print(tg)
+            op = np.zeros((1, 16, 2), dtype=int)
+            tg = np.zeros((1, 16, 2), dtype=int)
             mAPs += eval_pckh('mpii', tg, op, 0.05*i)
+            print('thresh:   %f  mAP     %f' % (0.05 * i, mAPs))
         mAPs /= len(data_loader)
         with open('SH_mAP.txt', 'a+') as fp:
             fp.write('thresh:   %f  mAP     %f\n' %(0.05*i, mAPs))
         print('thresh:   %f  mAP     %f' %(0.05*i, mAPs))
 
+
+if __name__ == '__main__':
+    weight_file_name = WeightPath+"stacked_hourglass.pkl"
+    eval_SH(weight_file_name)

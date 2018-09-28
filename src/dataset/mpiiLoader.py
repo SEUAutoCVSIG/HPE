@@ -16,19 +16,7 @@ import numpy as np
 import torch
 import os
 from math import sin, cos, radians
-
-
-def calcul_heatmap(img_width, img_height, c_x, c_y, sigma):
-    X1 = np.linspace(1, img_width, img_width)
-    Y1 = np.linspace(1, img_height, img_height)
-    [X, Y] = np.meshgrid(X1, Y1)
-    X = X - c_x
-    Y = Y - c_y
-    D2 = X * X + Y * Y
-    E2 = 2.0 * sigma * sigma
-    Exponent = D2 / E2
-    heatmap = np.exp(-Exponent)
-    return heatmap
+from src.utils import calcul_heatmap
 
 
 class Person:
@@ -204,6 +192,7 @@ class MpiiDataSet_sig(data.Dataset):
     def add_person(self, imgidx, idx_pp):
         self.containers += [Person(self.mpii, imgidx, idx_pp)]
         self.num_person += 1
+
 
     def add_person_aug(self, idx):
         pass

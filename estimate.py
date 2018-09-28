@@ -15,6 +15,8 @@ from copy import deepcopy
 from src.utils import draw, insert_img
 import torch
 import time
+from src.dataset.mpii import Mpii
+from src.dataset.dataloader import MpiiDataset
 
 
 class Estimator:
@@ -161,6 +163,23 @@ class Estimator:
             cv2.imshow('Target', img)
             cv2.waitKey(0)
 
+    def gt_check(self):
+        mpii = MpiiDataset(FolderPath, Annotation)
+        for i in range(len(mpii)):
+            if mpii.containers[i].istrain:
+                dir, num_pp, gt_np = mpii[i]
+                gt = [[[0, 0]]*16]*num_pp
+                img = cv2.imread(dir)
+                for pp in range(num_pp):
+                    for part in range(16):
+                        gt[pp][part] = int(gt_np[pp][part][0]), int(gt_np[pp][part][1])
+                    draw(img, gt[pp], 2)
+                cv2.imshow('Ground Truth', img)
+                cv2.waitKey(0)
+
+
+
+
     def AR_beta(self, dataset):
         insert = cv2.imread('/Users/midora/Downloads/01300542846491152239525449451.jpg')
 
@@ -168,7 +187,7 @@ class Estimator:
 if __name__ == "__main__":
     weight_file_name = WeightPath + "stacked_hourglass.pkl"
     # Dataset
-    dataset = MpiiDataSet_sig(FolderPath, Annotation, if_train=False)
+    # dataset = MpiiDataSet_sig(FolderPath, Annotation, if_train=False)
     # Model
     model = StackedHourglass(16)
     if os.path.isfile(weight_file_name):
@@ -179,4 +198,5 @@ if __name__ == "__main__":
     # Estimator
     estimator = Estimator(model)
     # estimator.test(dataset)
-    estimator.tg_check(dataset)
+    # estimator.tg_check(dataset)
+    estimator.gt_check()

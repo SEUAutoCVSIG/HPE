@@ -9,6 +9,7 @@ South East University Automation College, 211hna189 Nanjing China
 
 
 import numpy as np
+from poseevaluation.mpii import *
 import poseevaluation
 
 """
@@ -87,6 +88,7 @@ def eval_strict_pcp(gt_joints, predicted_joints, thresh=0.5):
     Returns:
         pcp_per_stick: array of pcp scores. i-th element is the pcp score for the i-th stick
     """
+
     if len(gt_joints) != len(predicted_joints):
         raise ValueError('Len of gt must be equal to len of predicted')
     if len(gt_joints) == 0:
@@ -132,6 +134,8 @@ def eval_pckh(dataset_name, gt_joints, predicted_joints, thresh=0.5):
     Returns:
         pckh_per_joint: array of PCKh scores. i-th element is the PCKh score for the i-th joint
     """
+    gt_joints = convert2canonical(gt_joints)
+    predicted_joints = convert2canonical(predicted_joints)
     if len(gt_joints) != len(predicted_joints):
         raise ValueError('Len of gt must be equal to len of predicted')
     if len(gt_joints) == 0:
