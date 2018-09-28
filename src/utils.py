@@ -578,6 +578,17 @@ def build_target(pred_boxes, target, anchors, num_anchors, num_classes,
 
     return nGT, nCorrect, mask, conf_mask, tx, ty, tw, th, tconf, tcls
 
+def calcul_heatmap(img_width, img_height, c_x, c_y, sigma):
+    X1 = np.linspace(1, img_width, img_width)
+    Y1 = np.linspace(1, img_height, img_height)
+    [X, Y] = np.meshgrid(X1, Y1)
+    X = X - c_x
+    Y = Y - c_y
+    D2 = X * X + Y * Y
+    E2 = 2.0 * sigma * sigma
+    Exponent = D2 / E2
+    heatmap = np.exp(-Exponent)
+    return heatmap
 
 def draw(img, coor, thick):
     '''
