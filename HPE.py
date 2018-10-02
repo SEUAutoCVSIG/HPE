@@ -56,7 +56,9 @@ class HPE():
         cap = cv2.VideoCapture(0)
 
         while 1:
-            ret, frame = cap.read()
+            # ret, frame = cap.read()
+            frame = cv2.imread("data/samples/05.jpg")
+
             try:
                 # Making prediction
                 prediction = self.detector.detect(frame)[..., :4]
@@ -121,7 +123,8 @@ class HPE():
         cap = cv2.VideoCapture(0)
 
         while 1:
-            ret, frame = cap.read()
+            #ret, frame = cap.read()
+            frame = cv2.imread("data/samples/21.jpg")
             try:
                 # Geting dimensions
                 frame_h, frame_w = frame.shape[0], frame.shape[1]
@@ -145,12 +148,13 @@ class HPE():
                         prediction_[2*i + 1] = prediction_[2*i + 1] if prediction_[2*i + 1] >= 0 else 0
                         prediction_[2*i + 1] = prediction_[2*i + 1] if prediction_[2*i + 1] <= frame_w else frame_w
 
-                    estimation.append(self.estimator.estimate(frame, prediction_, thresh=0.2))
+                    estimation.append(self.estimator.estimate(frame, prediction_, thresh=0.4))
 
                 # Draw key points
                 for estimation_ in estimation:
                     draw(frame, estimation_, 2)
 
+                frame = cv2.resize(frame, (frame.shape[1]//2, frame.shape[0]//2), interpolation=cv2.INTER_CUBIC)
                 # Press 'q' to exit
                 cv2.imshow("target", frame)
                 if cv2.waitKey(100) & 0xFF == ord('q'):
@@ -229,4 +233,4 @@ class HPE():
 
 if __name__ == '__main__':
     test = HPE()
-    test.single_pose_estimate()
+    test.pose_estimate()
