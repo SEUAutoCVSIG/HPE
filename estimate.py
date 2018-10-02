@@ -4,7 +4,7 @@
 
     Author          ：Yu Du
     Email           : 1239988498@qq.com
-    Last edit date  : Sat Sep 25 15:00 2018
+    Last edit date  : Tue Oct 2 15:02 2018
 
 South East University Automation College, 211189 Nanjing China
 '''
@@ -67,8 +67,6 @@ class Estimator:
             draw(img_gt, gt, 3)
             draw(img_tg, tg, 3)
 
-
-
             cv2.imshow('Estimator', img)
             cv2.imshow('Ground Truth', img_gt)
             cv2.imshow('Target', img_tg)
@@ -127,7 +125,7 @@ class Estimator:
         op_np = np.zeros((16, 2), dtype=int)
         for part in range(len(self.parts)):
             part_output = output[0, part + len(self.parts), :, :]
-            if part_output.max() != 0:# and part_output.max() >= thresh:
+            if part_output.max() != 0:  # and part_output.max() >= thresh:
                 op_np[part][0] = np.where(part_output == part_output.max())[0][0]
                 op_np[part][1] = np.where(part_output == part_output.max())[1][0]
         # print('target = ', op_np)
@@ -168,20 +166,17 @@ class Estimator:
         for i in range(len(mpii)):
             if mpii.containers[i].istrain:
                 dir, num_pp, gt_np = mpii[i]
-                gt = [[[0, 0]]*16]*num_pp
+                gt = [[[0, 0]] * 16] * num_pp
                 img = cv2.imread(dir)
+                # doge = cv2.imread('/Users/midora/Desktop/Python/HPE/res/doge.jpg')
+                # doge = cv2.imread('/Users/midora/Desktop/Python/HPE/res/pikachu.jpg')
                 for pp in range(num_pp):
                     for part in range(16):
                         gt[pp][part] = int(gt_np[pp][part][0]), int(gt_np[pp][part][1])
                     draw(img, gt[pp], 2)
+                    # insert_img(img, doge, 'lsho', gt[pp])
                 cv2.imshow('Ground Truth', img)
                 cv2.waitKey(0)
-
-
-
-
-    def AR_beta(self, dataset):
-        insert = cv2.imread('/Users/midora/Downloads/01300542846491152239525449451.jpg')
 
 
 if __name__ == "__main__":

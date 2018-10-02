@@ -28,6 +28,7 @@ import cv2
 from cmath import sqrt
 
 
+
 def non_max_suppression(prediction, num_classes, conf_thres=0.5, nms_thres=0.4):
     """
     Removes detections with lower object confidence score than 'conf_thres' and performs
@@ -647,7 +648,7 @@ def insert_img(ori_img, ins_img, part, joint):
         part = parts.index(part)
     point = list(joint[part])
     # Image has been sharpened is better
-    white = np.array([245, 245, 245])
+    white = np.array([242, 242, 242])
 
     # Using the size of head to confirm the size of insert-picture
     size = dis(joint[8], joint[9])

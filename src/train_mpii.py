@@ -140,5 +140,5 @@ if __name__ == '__main__':
 
     model.train()
 
-    train(model, FolderPath, Annotation, epochs=10, batch_size=2, learn_rate=0.005, momentum=0.9, decay=0.0005,
+    train(model, FolderPath, Annotation, epochs=10, batch_size=1, learn_rate=0.005, momentum=0.9, decay=0.0005,
           check_point=1, weight_file_name=weight_file_name)

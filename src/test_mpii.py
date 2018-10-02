@@ -4,12 +4,12 @@
 
     Author          ：Yu Du
     Email           : 1239988498@qq.com
-    Last edit date  :
+    Last edit date  : Tue Oct 2 14:59 2018
 
 South East University Automation College, 211189 Nanjing China
 '''
 from src.train_mpii import *
-from src.utils import get_points, get_points_multi
+from src.utils import get_points_multi
 from poseevaluation.pcp_pck import *
 
 def eval_SH(weight_file_name):
@@ -50,13 +50,7 @@ def eval_SH(weight_file_name):
             output = stack_hourglass(data)
             op = get_points_multi(output)
             tg = get_points_multi(target)
-            print(op.shape[1:])
-            print(tg.shape)
-            print(op)
-            print(tg)
-            op = np.zeros((1, 16, 2), dtype=int)
-            tg = np.zeros((1, 16, 2), dtype=int)
-            mAPs += eval_pckh('mpii', tg, op, 0.05*i)
+            mAPs += eval_pckh('mpii', tg, op)
             print('thresh:   %f  mAP     %f' % (0.05 * i, mAPs))
         mAPs /= len(data_loader)
         with open('SH_mAP.txt', 'a+') as fp:
